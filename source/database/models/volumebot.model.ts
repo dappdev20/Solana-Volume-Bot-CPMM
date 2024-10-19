@@ -91,6 +91,10 @@ const volumeBotSchema = new mongoose.Schema({
 	allowed: {
 		type: Number,
 		default: 0, // start: 1, stop: 0
+	},
+	ammType: {
+		type: String,
+		default: "",
 	}
 });
 

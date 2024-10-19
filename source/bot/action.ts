@@ -189,8 +189,7 @@ export const buyAction = async (
             const baseToken = new Token(TOKEN_PROGRAM_ID, token, botOnSolana.token.decimals);
 
             // raydium.setOwner(mainWallet);
-
-            const poolInfo = await getPoolInfo(connection, quoteToken, baseToken, raydium);
+            const poolInfo = await getPoolInfo(connection, quoteToken, baseToken, raydium, userId);
 
             if (poolInfo == null) {
                 return 3;
@@ -254,7 +253,8 @@ export const sellAction = async (
         let versionTx = [];
         try {
             const baseToken = new Token(TOKEN_PROGRAM_ID, token, mintInfo.decimals);
-            const poolKeys = await getPoolInfo(connection, quoteToken, baseToken, raydium);
+            const ammType = botOnSolana.ammType;
+            const poolKeys = await getPoolInfo(connection, quoteToken, baseToken, raydium, userId);
             const sellTx = await sellToken(connection, mainWallet, tokenAmount, quoteToken, baseToken, poolKeys, raydium);
             versionTx.push(sellTx?.transaction);
             const ret = await createAndSendBundle(connection, mainWallet, versionTx);
@@ -465,6 +465,21 @@ export const marketMakerBotUpdateStatus = async (
         statusMM: newStatus,
     });
 }
+
+export const updateAMMType = async (
+    userId: any,
+    ammType: string,
+) => {
+    const botOnSolana = await VolumeBotModel.findOne({
+        userId: userId
+    });
+    if (botOnSolana !== null) {
+        await VolumeBotModel.findByIdAndUpdate(botOnSolana._id, {
+            ammType: ammType,
+        });
+    }
+}
+
 
 export const makeNewKeyPair = async (index: number) => {
 

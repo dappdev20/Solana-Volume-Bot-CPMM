@@ -68,6 +68,10 @@ import {
   VOLUME_BOT_MIN_HOLD_SOL,
   VOLUME_BOT_MIN_PERCENTAGE
 } from "../bot/const";
+
+import {
+  updateAMMType,
+} from "../bot/action";
 import axios from "axios";
 import { AddressLookupTableAccount } from "@solana/web3.js";
 
@@ -335,7 +339,8 @@ export const getPoolInfo = async (
   connection: Connection,
   quoteToken: Token,
   baseToken: Token,
-  raydium: Raydium | undefined
+  raydium: Raydium | undefined,
+  userId: any
 ) => {
   console.log("Getting pool info...");
 
@@ -355,9 +360,25 @@ export const getPoolInfo = async (
       type: PoolFetchType.Standard
     }) as any;
 
-    const tokenPool = data.data[0];
+    const poolNum = data.data.length;
+    let i = 0;
+    let poolType = '';
+    for(i = 0; i < poolNum; i ++) {
+      if (isValidCpmm(data.data[i].programId)) {
+        poolType = 'cpmm';
+        break;
+      } else if (isValidAmm(data.data[i].programId)) {
+        poolType = 'amm';
+        break;
+      } else if (isValidClmm(data.data[i].programId)) {
+        poolType = 'clmm';
+        break;
+      }
+    }
+    console.log("Pool Type = ", poolType, "Pool Num = ", data.data.length);
 
-    return tokenPool;
+    updateAMMType(userId, poolType);
+    return data.data[i];
   } catch {
     console.log("Getting poolKeys Unknown Error.");
     return null;
@@ -1124,7 +1145,8 @@ const checkBundle = async (uuid: any) => {
         })
       ).json();
 
-      // console.log("response", response);
+      console.log("response", response.result.value.length);
+      console.log("bundle_id", response.result.value[0].bundle_id);
 
       if (response?.result?.value?.length == 1 && response?.result?.value[0]?.bundle_id) {
         console.log('Bundle Success:', uuid);
