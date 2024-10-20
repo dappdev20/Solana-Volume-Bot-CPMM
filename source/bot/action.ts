@@ -254,7 +254,59 @@ export const sellAction = async (
         let versionTx = [];
         try {
             const baseToken = new Token(TOKEN_PROGRAM_ID, token, mintInfo.decimals);
-            const ammType = botOnSolana.ammType;
+            const poolKeys = await getPoolInfo(connection, quoteToken, baseToken, raydium, userId);
+            const sellTx = await sellToken(connection, mainWallet, tokenAmount, quoteToken, baseToken, poolKeys, raydium);
+            versionTx.push(sellTx?.transaction);
+            const ret = await createAndSendBundle(connection, mainWallet, versionTx);
+            return ret;
+        } catch (err) {
+            console.log(err);
+        }
+        return 4;
+    }
+    else {
+        console.error(
+            "There is none token."
+        );
+    }
+    return 4;
+}
+
+export const sellAllAction = async (
+    connection: Connection,
+    userId: any,
+    raydium: Raydium | undefined
+) => {
+
+    if (raydium == undefined) {
+        return 3;
+    }
+
+    const botOnSolana: any = await VolumeBotModel.findOne({
+        userId: userId
+    })
+        .populate("mainWallet")
+        .populate("token")
+
+    const token = botOnSolana.token.address;
+    const mint = new PublicKey(token);
+    const mintInfo = await getMint(connection, mint);
+    const mainWallet = Keypair.fromSecretKey(bs58.decode(botOnSolana.mainWallet.privateKey));
+    const sourceAccount = getAssociatedTokenAddressSync(
+        mint,
+        mainWallet.publicKey
+    );
+    const tokenAccountInfo: any = await getAccount(connection, sourceAccount);
+    if (tokenAccountInfo) {
+        const tokenAmount = tokenAccountInfo.amount;
+
+        console.log("tokenAmount : ", tokenAmount);
+        if (Number(tokenAmount) === 0) {
+            return 2;
+        }
+        let versionTx = [];
+        try {
+            const baseToken = new Token(TOKEN_PROGRAM_ID, token, mintInfo.decimals);
             const poolKeys = await getPoolInfo(connection, quoteToken, baseToken, raydium, userId);
             const sellTx = await sellToken(connection, mainWallet, tokenAmount, quoteToken, baseToken, poolKeys, raydium);
             versionTx.push(sellTx?.transaction);

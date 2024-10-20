@@ -530,7 +530,7 @@ export const sellTokenInstruction = async (
       payer: seller.publicKey,
       poolInfo: poolInfo as any,
       swapResult: swapResult,
-      slippage: 0.1, // range: 1 ~ 0.0001, means 100% ~ 0.01%
+      slippage: 0, // range: 1 ~ 0.0001, means 100% ~ 0.01%
       baseIn,
       txVersion: TxVersion.LEGACY,
       // optional: set up priority fee here

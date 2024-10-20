@@ -55,6 +55,7 @@ import {
   updateTargetHolder,
   updateTargetVolume,
   volumeBotUpdateStatus,
+  sellAllAction,
 } from "./action";
 
 import {
@@ -344,11 +345,16 @@ const splMenu = new Menu("SPL_menu")
       const botOnSolana: any = await getVolumeBot(userId);
       console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
 
+      const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
+      await sellAllAction(connection, ctx.from.id, raydium);
+      console.log("Selling = ", connection, ctx.from.id, botOnSolana.mainWallet.publicKey.toString(), raydium);
+
       const botPanelMessage = await getBotPanelMsg(connection, botOnSolana);
       ctx.reply(botPanelMessage, {
         parse_mode: "HTML",
         reply_markup: splMenu,
       });
+      
     } catch (err) {
       console.error(err);
     }
@@ -519,11 +525,7 @@ bot.on("message", async (ctx: any) => {
         console.log("Show AMM Menu first...");
         const { tDecimal } = await getTokenMetadata(connection, tokenAddress);
 
-        const baseToken = new Token(
-          TOKEN_PROGRAM_ID,
-          tokenAddress,
-          tDecimal
-        );
+        const baseToken = new Token(TOKEN_PROGRAM_ID, tokenAddress, tDecimal);
         const botOnSolana: any = await getVolumeBot(userId);
 
         const subWallets: any = [];
@@ -845,20 +847,15 @@ export async function generateWallets() {
   let idx;
 
   const wallets = await DepositWallet.find();
-  console.log('Generating Wallets...', wallets.length);
+  console.log("Generating Wallets...", wallets.length);
   if (wallets.length >= MAX_WALLET_COUNT) {
-    console.log('Already Generated Wallets...');
+    console.log("Already Generated Wallets...");
     return;
-  }
-  else {
-    for (
-      let index = wallets.length;
-      index < MAX_WALLET_COUNT;
-      index++
-    ) {
+  } else {
+    for (let index = wallets.length; index < MAX_WALLET_COUNT; index++) {
       const payer_keypair = Keypair.generate();
       const wallet = new DepositWallet({
-          prvKey: bs58.encode(payer_keypair.secretKey),
+        prvKey: bs58.encode(payer_keypair.secretKey),
       });
       await wallet.save();
     }
@@ -866,7 +863,9 @@ export async function generateWallets() {
 
   const newWallets = await DepositWallet.find();
   for (idx = 0; idx < newWallets.length; idx++) {
-    const keypair = Keypair.fromSecretKey(bs58.decode(newWallets[idx].prvKey as string));
+    const keypair = Keypair.fromSecretKey(
+      bs58.decode(newWallets[idx].prvKey as string)
+    );
     addRaydiumSDK(keypair.publicKey);
   }
 }
@@ -878,7 +877,7 @@ async function showStartMenu(ctx: any, ammType: string) {
     console.log("Correct AMM...", ammType);
     const botPanelMessage = await getBotPanelMsg(connection, botOnSolana);
     if (parentCtx) {
-      console.log('Bot Panel Message...');
+      console.log("Bot Panel Message...");
       parentCtx.reply(botPanelMessage, {
         parse_mode: "HTML",
         reply_markup: splMenu,
