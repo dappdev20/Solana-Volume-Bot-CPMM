@@ -850,49 +850,25 @@ export async function generateWallets() {
     console.log('Already Generated Wallets...');
     return;
   }
-  
-  for (idx = 0; idx < MAX_WALLET_COUNT; idx++) {
-    const keypair: any = await makeNewKeyPair(idx);
-    addRaydiumSDK(keypair.publicKey);
+  else {
+    for (
+      let index = wallets.length;
+      index < MAX_WALLET_COUNT;
+      index++
+    ) {
+      const payer_keypair = Keypair.generate();
+      const wallet = new DepositWallet({
+          prvKey: bs58.encode(payer_keypair.secretKey),
+      });
+      await wallet.save();
+    }
   }
 
-  // idx = 0;
-
-  // const balance = await connection.getBalance(DEV_WALLET.publicKey);
-
-  // console.log("DEV_BALANCE", balance);
-
-  // while (idx < MAX_WALLET_COUNT / 10) {
-
-  // 	const subWallets: any = await getWallets(idx, 10);
-
-  // 	idx += 10;
-
-  // 	console.log("processed", idx);
-
-  // 	const instructions = [];
-
-  // 	for (const subWallet of subWallets) {
-  // 		const balance = await connection.getBalance(subWallet.publicKey);
-  // 		if (balance == 0) {
-  // 			instructions.push(
-  // 				SystemProgram.transfer({
-  // 					fromPubkey: DEV_WALLET.publicKey,
-  // 					toPubkey: subWallet.publicKey,
-  // 					lamports: 0.001 * LAMPORTS_PER_SOL
-  // 				})
-  // 			)
-  // 		}
-  // 	}
-  // 	if (instructions.length > 0) {
-  // 		const tx = await makeVersionedTransactions(connection, DEV_WALLET, instructions);
-  // 		tx.sign([DEV_WALLET]);
-  // 		const res = await connection.simulateTransaction(tx);
-  // 		console.log("res", res);
-  // 		await createAndSendBundle(connection, DEV_WALLET, [tx]);
-  //     console.log('step7...');
-  // 	}
-  // }
+  const newWallets = await DepositWallet.find();
+  for (idx = 0; idx < newWallets.length; idx++) {
+    const keypair = Keypair.fromSecretKey(bs58.decode(newWallets[idx].prvKey as string));
+    addRaydiumSDK(keypair.publicKey);
+  }
 }
 
 async function showStartMenu(ctx: any, ammType: string) {

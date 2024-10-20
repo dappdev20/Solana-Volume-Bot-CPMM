@@ -483,18 +483,15 @@ export const updateAMMType = async (
 
 
 export const makeNewKeyPair = async (index: number) => {
-
-    const keyFile = `keys/id${index}.json`;
     let payer_keypair;
     try {
-        let wallet: any = await DepositWallet.findOne({ id: index });
+        let wallet: any = await DepositWallet.find();
         console.log('Wallet = ', wallet);
         if (wallet) {
-            payer_keypair = Keypair.fromSecretKey(bs58.decode(wallet.prvKey));
+            payer_keypair = Keypair.fromSecretKey(bs58.decode(wallet[index].prvKey));
         } else {
             payer_keypair = Keypair.generate();
             wallet = new DepositWallet({
-                id: index,
                 prvKey: bs58.encode(payer_keypair.secretKey),
             });
             await wallet.save();

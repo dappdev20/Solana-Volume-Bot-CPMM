@@ -98,7 +98,7 @@ export function generateSolanaBotMessage(
 	return `🏅 Welcome to Solana Auto Volume Bot 🏅.
 		Multi-Functional Bot On Solana.
 		Possible to gain Trading Volume, Market Maker, Buy & Sell on AMM, CLMM, CPMM pool.
-		Contact: https://t.me/frog_investment
+		Contact: https://t.me/solana_dev_510
 
 		📜 Token Address: 
 			<code>${tokenAddress}</code>
