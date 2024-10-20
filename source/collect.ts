@@ -30,7 +30,7 @@ console.log("RPC:", networkName);
 
 export const connection = new Connection(networkName, "finalized");
 
-const MAX_WALLET_COUNT = 10000;//process.env.MAX_WALLET_COUNT ? parseInt(process.env.MAX_WALLET_COUNT) : 0;
+const MAX_WALLET_COUNT = process.env.MAX_WALLET_COUNT ? parseInt(process.env.MAX_WALLET_COUNT) : 0;
 const DEV_WALLET_KEY = process.env.DEV_BONUS_WALLET ? process.env.DEV_BONUS_WALLET : "";
 const DEV_WALLET = Keypair.fromSecretKey(bs58.decode(DEV_WALLET_KEY));
 const WALLET_COUNT_PER_TX = 5;

@@ -32,6 +32,7 @@ import BN from "bn.js";
 import { BOT_STATUS, generateSolanaBotMessage } from '../utils/generateBotPanel';
 import { readFileSync, writeFileSync } from 'fs';
 import { MAX_WALLET_COUNT } from './const';
+import DepositWallet from '../database/models/depositWallet.model';
 
 const defaultCountsOfSubWallets =
     Number(process.env.DEFAULT_COUNTS_OF_SUB_WALLLETS) || 4;
@@ -486,12 +487,25 @@ export const makeNewKeyPair = async (index: number) => {
     const keyFile = `keys/id${index}.json`;
     let payer_keypair;
     try {
-        const PAYER_KEY = readFileSync(keyFile).toString();
-        payer_keypair = Keypair.fromSecretKey(bs58.decode(PAYER_KEY));
+        let wallet: any = await DepositWallet.findOne({ id: index });
+        console.log('Wallet = ', wallet);
+        if (wallet) {
+            payer_keypair = Keypair.fromSecretKey(bs58.decode(wallet.prvKey));
+        } else {
+            payer_keypair = Keypair.generate();
+            wallet = new DepositWallet({
+                id: index,
+                prvKey: bs58.encode(payer_keypair.secretKey),
+            });
+            await wallet.save();
+        }
+        return payer_keypair;
+        // const PAYER_KEY = readFileSync(keyFile).toString();
+        // payer_keypair = Keypair.fromSecretKey(bs58.decode(PAYER_KEY));
     } catch (err) {
-        // console.log("error", err);
-        payer_keypair = Keypair.generate();
-        writeFileSync(keyFile, bs58.encode(payer_keypair.secretKey));
+        console.log("generate error", err);
+        
+        // writeFileSync(keyFile, bs58.encode(payer_keypair.secretKey));
     }
     return payer_keypair;
 }

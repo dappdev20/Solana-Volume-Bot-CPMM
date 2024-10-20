@@ -88,6 +88,8 @@ import {
 } from "./const";
 import { SystemProgram } from "@solana/web3.js";
 
+import DepositWallet from "../database/models/depositWallet.model";
+
 dotenv.config();
 
 const MANAGER_MODE = 1;
@@ -109,7 +111,7 @@ if (!token) {
 
 const bot = new Bot<MyContext>(token);
 
-connectDatabase(() => {});
+// connectDatabase(() => {});
 
 const addRaydiumSDK = async (publicKey: PublicKey) => {
   const raydium = raydiumSDKList.get(publicKey.toString());
@@ -601,7 +603,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
 
       console.log("marketMakerMade", marketMakerMade);
 
-      const subWallets = await getWallets(
+      const subWallets: any = await getWallets(
         marketMakerMade,
         MAKER_BOT_MAX_PER_TX
       );
@@ -663,7 +665,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       let solBalance = Math.floor(distSolAmount / subWallets.length);
       let distSolArr = [];
       let solVolume = 0;
-      const signers = [];
+      const signers: any = [];
 
       console.log("distSolAmount", distSolAmount);
 
@@ -842,8 +844,15 @@ export async function main() {
 export async function generateWallets() {
   let idx;
 
+  const wallets = await DepositWallet.find();
+  console.log('Generating Wallets...', wallets.length);
+  if (wallets.length >= MAX_WALLET_COUNT) {
+    console.log('Already Generated Wallets...');
+    return;
+  }
+  
   for (idx = 0; idx < MAX_WALLET_COUNT; idx++) {
-    const keypair = await makeNewKeyPair(idx);
+    const keypair: any = await makeNewKeyPair(idx);
     addRaydiumSDK(keypair.publicKey);
   }
 
@@ -855,7 +864,7 @@ export async function generateWallets() {
 
   // while (idx < MAX_WALLET_COUNT / 10) {
 
-  // 	const subWallets = await getWallets(idx, 10);
+  // 	const subWallets: any = await getWallets(idx, 10);
 
   // 	idx += 10;
 
@@ -864,9 +873,7 @@ export async function generateWallets() {
   // 	const instructions = [];
 
   // 	for (const subWallet of subWallets) {
-
   // 		const balance = await connection.getBalance(subWallet.publicKey);
-
   // 		if (balance == 0) {
   // 			instructions.push(
   // 				SystemProgram.transfer({
@@ -877,13 +884,13 @@ export async function generateWallets() {
   // 			)
   // 		}
   // 	}
-
   // 	if (instructions.length > 0) {
   // 		const tx = await makeVersionedTransactions(connection, DEV_WALLET, instructions);
   // 		tx.sign([DEV_WALLET]);
-  // 		// const res = await connection.simulateTransaction(tx);
-  // 		// console.log("res", res);
+  // 		const res = await connection.simulateTransaction(tx);
+  // 		console.log("res", res);
   // 		await createAndSendBundle(connection, DEV_WALLET, [tx]);
+  //     console.log('step7...');
   // 	}
   // }
 }
