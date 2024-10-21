@@ -95,10 +95,9 @@ export function generateSolanaBotMessage(
 	botStats: BotStats,
 	walletInfo: WalletInfo
 ): string {
-	return `🏅 Welcome to Solana Auto Volume Bot 🏅.
-		Multi-Functional Bot On Solana.
+	return `🏅 Welcome to Solana Raydium Volume Bot 🏅.
 		Possible to gain Trading Volume, Market Maker, Buy & Sell on AMM, CLMM, CPMM pool.
-		Contact: https://t.me/dappdev20
+		Contact: https://t.me/solana_dev_510
 
 		📜 Token Address: 
 			<code>${tokenAddress}</code>

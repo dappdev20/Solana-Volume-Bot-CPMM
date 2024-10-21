@@ -385,7 +385,7 @@ export const getPoolInfo = async (
   }
 };
 
-export const collectSol = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, subWallets: Keypair[]) => {
+export const collectSol = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair) => {
 
   console.log("Collecting all SOL...");
   const txFee = VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL;

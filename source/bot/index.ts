@@ -292,6 +292,15 @@ const splMenu = new Menu("SPL_menu")
     );
   })
   .row()
+  .text("🩸 Sell Tokens", async (ctx: any) => {
+    const userId = ctx.from.id;
+    const botOnSolana: any = await getVolumeBot(userId);
+    console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
+
+    const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
+    await sellAllAction(connection, ctx.from.id, raydium);
+    console.log("Selling = ", ctx.from.id, botOnSolana.mainWallet.publicKey.toString());
+  })
   .text("🧩 Collect SOL", async (ctx: any) => {
     const botOnSolana: any = await getVolumeBot(ctx.from.id);
 
@@ -305,16 +314,6 @@ const splMenu = new Menu("SPL_menu")
     ctx.reply(`🎚️ Please input the your wallet address to collect SOL.`, {
       reply_markup: { force_reply: true },
     });
-  })
-  .row()
-  .text("Sell All Token", async (ctx: any) => {
-    const userId = ctx.from.id;
-    const botOnSolana: any = await getVolumeBot(userId);
-    console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
-
-    const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
-    await sellAllAction(connection, ctx.from.id, raydium);
-    console.log("Selling = ", connection, ctx.from.id, botOnSolana.mainWallet.publicKey.toString(), raydium);
   })
   .row()
   .text("❓ Help", async (ctx: any) => {
@@ -466,22 +465,13 @@ bot.on("message", async (ctx: any) => {
 
       try {
         const botOnSolana: any = await getVolumeBot(userId);
-
-        const subWallets: any = [];
-        for (let index = 0; index < botOnSolana.subWalletNums; index++) {
-          subWallets[index] = Keypair.fromSecretKey(
-            bs58.decode(botOnSolana.subWallets[index]["privateKey"])
-          );
-        }
-
         const mainWallet = Keypair.fromSecretKey(
           bs58.decode(botOnSolana.mainWallet.privateKey)
         );
         const ret = await collectSol(
           connection,
           new PublicKey(inputText),
-          mainWallet,
-          subWallets
+          mainWallet
         );
 
         if (ret === 0) {
@@ -510,41 +500,9 @@ bot.on("message", async (ctx: any) => {
           userId
         );
 
-        const botPanelMessage = await startBotAction(
-          connection,
-          userId,
-          tokenAddress
-        );
-
-        // ctx.reply(botPanelMessage, {
-        // 	parse_mode: "HTML",
-        // 	reply_markup: splMenu,
-        // });
         console.log("Show AMM Menu first...");
-        const { tDecimal } = await getTokenMetadata(connection, tokenAddress);
-
-        const baseToken = new Token(TOKEN_PROGRAM_ID, tokenAddress, tDecimal);
-        const botOnSolana: any = await getVolumeBot(userId);
-
-        const subWallets: any = [];
-        for (let index = 0; index < botOnSolana.subWalletNums; index++) {
-          subWallets[index] = Keypair.fromSecretKey(
-            bs58.decode(botOnSolana.subWallets[index]["privateKey"])
-          );
-        }
-
-        const mainWallet: Keypair = Keypair.fromSecretKey(
-          bs58.decode(botOnSolana.mainWallet.privateKey)
-        );
-        const poolKeys = await getPoolInfo(
-          connection,
-          quoteToken,
-          baseToken,
-          raydiumSDKList.get(mainWallet.publicKey.toString()),
-          userId
-        );
         parentCtx = ctx;
-        ctx.reply("Select AMM Type", {
+        ctx.reply("Select Pool Type", {
           parse_mode: "HTML",
           reply_markup: ammMenu,
         });
