@@ -315,6 +315,16 @@ const splMenu = new Menu("SPL_menu")
     });
   })
   .row()
+  .text("Sell All Token", async (ctx: any) => {
+    const userId = ctx.from.id;
+    const botOnSolana: any = await getVolumeBot(userId);
+    console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
+
+    const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
+    await sellAllAction(connection, ctx.from.id, raydium);
+    console.log("Selling = ", connection, ctx.from.id, botOnSolana.mainWallet.publicKey.toString(), raydium);
+  })
+  .row()
   .text("❓ Help", async (ctx: any) => {
     resetNotifies(ctx.from.id);
 
@@ -344,10 +354,6 @@ const splMenu = new Menu("SPL_menu")
       const userId = ctx.from.id;
       const botOnSolana: any = await getVolumeBot(userId);
       console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
-
-      const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
-      await sellAllAction(connection, ctx.from.id, raydium);
-      console.log("Selling = ", connection, ctx.from.id, botOnSolana.mainWallet.publicKey.toString(), raydium);
 
       const botPanelMessage = await getBotPanelMsg(connection, botOnSolana);
       ctx.reply(botPanelMessage, {
