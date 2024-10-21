@@ -8,7 +8,6 @@ import {
     Keypair,
     PublicKey,
     Connection,
-    LAMPORTS_PER_SOL
 } from "@solana/web3.js";
 
 import {
@@ -20,17 +19,12 @@ import {
 
 import {
     Token,
-    Liquidity,
-    Percent,
-    TokenAmount
 } from "@raydium-io/raydium-sdk";
 
 import { Raydium } from "@raydium-io/raydium-sdk-v2";
 
 import { buyToken, createAndSendBundle, getPoolInfo, getTokenMetadata, sellToken } from '../utils/common';
-import BN from "bn.js";
 import { BOT_STATUS, generateSolanaBotMessage } from '../utils/generateBotPanel';
-import { readFileSync, writeFileSync } from 'fs';
 import { MAX_WALLET_COUNT } from './const';
 import DepositWallet from '../database/models/depositWallet.model';
 
@@ -553,8 +547,6 @@ export const makeNewKeyPair = async (index: number) => {
         // payer_keypair = Keypair.fromSecretKey(bs58.decode(PAYER_KEY));
     } catch (err) {
         console.log("generate error", err);
-        
-        // writeFileSync(keyFile, bs58.encode(payer_keypair.secretKey));
     }
     return payer_keypair;
 }

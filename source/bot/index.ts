@@ -93,15 +93,7 @@ import DepositWallet from "../database/models/depositWallet.model";
 
 dotenv.config();
 
-const MANAGER_MODE = 1;
-
-const DEV_WALLET_KEY = process.env.DEV_BONUS_WALLET
-  ? process.env.DEV_BONUS_WALLET
-  : "";
-const DEV_WALLET = Keypair.fromSecretKey(bs58.decode(DEV_WALLET_KEY));
-
 let parentCtx: any;
-
 console.log("bot-Token : ", token);
 
 if (!token) {
