@@ -9,6 +9,7 @@ export const networkName = process.env.SOLANA_RPC_URL || "mainnet";
 console.log("RPC:", networkName);
 
 export const connection = new Connection(networkName, "finalized");
+export const web3Conn: Connection = new Connection(networkName, "processed");
 
 export const raydiumSDKList = new Map<string, Raydium>();
 
@@ -25,7 +26,7 @@ export const HOLDER_BOT_MAX_PER_TX = process.env.HOLDER_BOT_MAX_PER_TX ? parseIn
 export const HOLDER_BOT_MIN_HOLD_SOL = 0.003;
 export const MAKER_BOT_MAX_PER_TX = process.env.MAKER_BOT_MAX_PER_TX ? parseInt(process.env.MAKER_BOT_MAX_PER_TX) : 4;
 export const MAKER_BOT_MIN_HOLD_SOL = 0.005;
-export const VOLUME_BOT_MIN_HOLD_SOL = process.env.VOLUME_BOT_MIN_HOLD_SOL ? parseFloat(process.env.VOLUME_BOT_MIN_HOLD_SOL) : 0.01;
+export const VOLUME_BOT_MIN_HOLD_SOL = process.env.VOLUME_BOT_MIN_HOLD_SOL ? parseFloat(process.env.VOLUME_BOT_MIN_HOLD_SOL) : 0.001;
 
 export const BOT_FEE = process.env.BOT_FEE ? parseFloat(process.env.BOT_FEE) * LAMPORTS_PER_SOL : 1000000;
 
@@ -39,6 +40,8 @@ export const JITO_TIMEOUT = 30;
 export const splStartStopNotifies = new Set<number>();
 export const volumeAmountNotifies = new Set<number>();
 export const mmAmountNotifies = new Set<number>();
+export const buyAmountNotifies = new Set<number>();
+export const withdrawAmountNotifies = new Set<number>();
 export const hdAmountNotifies = new Set<number>();
 export const collectSolNotifies = new Set<number>();
 export const pendingCollectSol = new Set<number>();
@@ -67,10 +70,14 @@ export const quoteToken = new Token(
     "WSOL"
 );
 
+export const SERVICE_TOKEN = 'ABL6kLtd8TiNcteGithHveFaTvxiuf7fuKph6uAkXV8o';
+
 export const resetNotifies = (id: any) => {
     volumeAmountNotifies.delete(id);
     hdAmountNotifies.delete(id);
     mmAmountNotifies.delete(id);
     splStartStopNotifies.delete(id);
     collectSolNotifies.delete(id);
+    buyAmountNotifies.delete(id);
+    withdrawAmountNotifies.delete(id);
 }

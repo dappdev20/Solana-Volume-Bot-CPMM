@@ -95,6 +95,10 @@ const volumeBotSchema = new mongoose.Schema({
 	ammType: {
 		type: String,
 		default: "",
+	},
+	minHoldSol: {
+		type: Number,
+		default: 0.001,
 	}
 });
 

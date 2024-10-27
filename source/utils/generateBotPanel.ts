@@ -4,6 +4,8 @@ interface TokenDetails {
 	symbol: string;
 	totalSupply: string;
 	decimals: number;
+	price: number;
+	marketcap: number;
 }
 
 export const BOT_STATUS = {
@@ -32,6 +34,7 @@ interface BotStats {
 	startStopFlag: number;
 	startStopFlagHD: number;
 	startStopFlagMM: number;
+	buyAmount: number;
 }
 
 interface WalletInfo {
@@ -57,16 +60,16 @@ function formatTime(totalSeconds: number): string {
 	let result = "";
 
 	if (days > 0) {
-		result += `${days}d `;
+		result += `${days} d `;
 	}
 	if (days > 0 || hours > 0) {
-		result += `${hours}h `;
+		result += `${hours} h `;
 	}
 	if (days > 0 || hours > 0 || minutes > 0) {
-		result += `${minutes}m `;
+		result += `${minutes} m `;
 	}
 	if (days > 0 || hours > 0 || minutes > 0 || seconds >= 0) {
-		result += `${seconds}s`;
+		result += `${seconds} s`;
 	}
 
 	return result.trim(); // Remove any trailing space
@@ -95,27 +98,24 @@ export function generateSolanaBotMessage(
 	botStats: BotStats,
 	walletInfo: WalletInfo
 ): string {
-	return `🏅 Welcome to Solana Auto Volume Bot 🏅.
-		Multi-Functional Bot On Solana.
-		Possible to gain Trading Volume, Market Maker, Buy & Sell on AMM, CLMM, CPMM pool.
-		Contact: https://t.me/dappdev20
+	return `🏅 Welcome to ${process.env.BOT_TITLE} 🏅.
+The fastest and most efficient auto volume bot on Solana.
 
-		📜 Token Address: 
+		🟢 Token address: 
 			<code>${tokenAddress}</code>
-			Pair : ${tokenDetails.symbol}/SOL
+		🔗 Pair : ${tokenDetails.symbol} / SOL
+		💵 Price: $${tokenDetails.price}
+		💹 Market Cap: $${tokenDetails.marketcap}
 
+		🎚️ Target Volume: ${formatUSD(botStats.targetVolume)}
+		💸 Buy SOL Amount: ${botStats.buyAmount} SOL
+		
+		⌛ Bot worked: ${formatTime(botStats.workedSeconds)}
+		💹 Bot made: ${formatUSD(botStats.volumeMade)}
+		
 		💳 Your Deposit Wallet: 
 			<code>${walletInfo.address}</code>
 		💰 Balance: ${(Number(walletInfo.balance) / 10 ** 9)?.toFixed(9)} SOL
-		💢 Please deposit 0.2 SOL at least into this wallet. 💢
-
-		⌛ Volume Bot worked: ${formatTime(botStats.workedSeconds)}
-		💹 Volume Made: ${formatUSD(botStats.volumeMade)}
-		💹 MarketMaker Made: ${botStats.marketMakerMade}
-
-		⚙ Bot settings:
-				Target volume: ${formatUSD(botStats.targetVolume)}
-
-		${botStats.startStopFlag == 1? "🏃‍♂️ Bot is running. 🏃‍♂️": ""}
+		Please deposit 0.2 SOL at least into this wallet.
 		`;
 }

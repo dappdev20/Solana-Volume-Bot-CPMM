@@ -74,6 +74,7 @@ import {
 } from "../bot/action";
 import axios from "axios";
 import { AddressLookupTableAccount } from "@solana/web3.js";
+import base58 from 'bs58';
 
 dotenv.config();
 
@@ -863,6 +864,25 @@ export const getTokenPrice = async (
   }
 };
 
+export async function getTokenData(tokenAddress: string) {
+  try {
+      const response = await axios.get(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+      const tokenData = response.data;
+      // console.log(tokenData);
+      if (tokenData.pairs === null)
+          return { result: false, data: [] };
+      const pairItem = tokenData.pairs.find((item: { quoteToken: { address: string; }; }) => item.quoteToken.address === 'So11111111111111111111111111111111111111112');
+      const dexId = pairItem.dexId;
+      if (dexId !== 'raydium')
+          return { result: false, data: [] };
+      // console.log('Token Data:', tokenData);
+      return { result: true, data: pairItem };
+  }
+  catch (error) {
+      console.error('Error fetching token data:', error);
+      return { result: false, data: [] };
+  }
+};
 
 export async function updateRecentBlockHash(connection: Connection, transactions: VersionedTransaction[]) {
 
@@ -1166,5 +1186,23 @@ const checkBundle = async (uuid: any) => {
     }
   }
   return false;
+}
 
+export function getWalletFromPrivateKey(privateKey: string): any | null {
+
+  try {
+      const key: Uint8Array = base58.decode(privateKey)
+      const keypair: Keypair = Keypair.fromSecretKey(key);
+
+      const publicKey = keypair.publicKey.toBase58()
+      const secretKey = base58.encode(keypair.secretKey)
+
+      return { publicKey, secretKey, wallet: keypair }
+  } catch (error) {
+      return null;
+  }
+}
+
+export const get_jito_block_api = () => {
+  return blockEngineUrl as string
 }

@@ -56,6 +56,7 @@ import {
   updateTargetVolume,
   volumeBotUpdateStatus,
   sellAllAction,
+  withdraw,
 } from "./action";
 
 import {
@@ -68,6 +69,8 @@ import {
   HOLDER_BOT_TOKEN_HOLDING,
   MAX_WALLET_COUNT,
   mmAmountNotifies,
+  buyAmountNotifies,
+  withdrawAmountNotifies,
   pendingCollectSol,
   pendingTokenBuy,
   quoteToken,
@@ -212,9 +215,9 @@ const splMenu = new Menu("SPL_menu")
         const botOnSolana: any = await getVolumeBot(ctx.from.id);
 
         const running = botOnSolana?.startStopFlag;
-        return running === 0 ? "🚀 Start" : "🛑 Stop";
+        return running === 0 ? "▶️ Start" : "⏹️ Stop";
       } else {
-        return "🚀 Start";
+        return "▶️ Start";
       }
     },
     async (ctx: any) => {
@@ -248,10 +251,10 @@ const splMenu = new Menu("SPL_menu")
             new PublicKey(botOnSolana.mainWallet.publicKey)
           );
 
-          if (solBalance < VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL) {
+          if (solBalance < botOnSolana.buyAmount * LAMPORTS_PER_SOL) {
             ctx.reply(
               `
-							You need to deposit ${VOLUME_BOT_MIN_HOLD_SOL} at least
+							You need to deposit ${botOnSolana.buyAmount} at least
 				
 							To achieve current target setting`
             );
@@ -290,62 +293,76 @@ const splMenu = new Menu("SPL_menu")
     volumeAmountNotifies.add(ctx.from.id);
 
     ctx.reply(
-      `
-			🎚️ Target Generated Volume Amount(100 ~ 100000000)
-
-			Please input the target volume amount this bot should reach.`,
+      `📨 Reply to this message with amount of volume to make.\nMin: 100`,
       {
         reply_markup: { force_reply: true },
       }
     );
   })
   .row()
-  .text("🧩 Collect SOL", async (ctx: any) => {
-    const botOnSolana: any = await getVolumeBot(ctx.from.id);
-
-    if (botOnSolana.startStopFlag === 1) {
-      ctx.reply("🚫 Please stop bot and retry!.");
-      return "🚀 Start";
-    }
+  .text("💸 Set Buy Amount", async (ctx: any) => {
     resetNotifies(ctx.from.id);
-    collectSolNotifies.add(ctx.from.id);
-
-    ctx.reply(`🎚️ Please input the your wallet address to collect SOL.`, {
+    buyAmountNotifies.add(ctx.from.id);
+    
+    ctx.reply(`📨 Reply to this message with amount of Sol for each trade.\nExample: 2.5 for 2.5 SOL`, {
       reply_markup: { force_reply: true },
     });
   })
-  .row()
-  .text("Sell All Token", async (ctx: any) => {
-    const userId = ctx.from.id;
-    const botOnSolana: any = await getVolumeBot(userId);
-    console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
+  // .row()
+  // .text("🧩 Collect SOL", async (ctx: any) => {
+  //   const botOnSolana: any = await getVolumeBot(ctx.from.id);
 
-    const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
-    await sellAllAction(connection, ctx.from.id, raydium);
-    console.log("Selling = ", connection, ctx.from.id, botOnSolana.mainWallet.publicKey.toString(), raydium);
-  })
+  //   if (botOnSolana.startStopFlag === 1) {
+  //     ctx.reply("🚫 Please stop bot and retry!.");
+  //     return "🚀 Start";
+  //   }
+  //   resetNotifies(ctx.from.id);
+  //   collectSolNotifies.add(ctx.from.id);
+
+  //   ctx.reply(`🎚️ Please input the your wallet address to collect SOL.`, {
+  //     reply_markup: { force_reply: true },
+  //   });
+  // })
+  // .row()
+  // .text("Sell All Token", async (ctx: any) => {
+  //   const userId = ctx.from.id;
+  //   const botOnSolana: any = await getVolumeBot(userId);
+  //   console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
+
+  //   const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
+  //   await sellAllAction(connection, ctx.from.id, raydium);
+  //   console.log("Selling = ", connection, ctx.from.id, botOnSolana.mainWallet.publicKey.toString(), raydium);
+  // })
   .row()
-  .text("❓ Help", async (ctx: any) => {
+  .text("💵 Withdraw", async (ctx: any) => {
     resetNotifies(ctx.from.id);
-
-    const botPanelMessage = `
-				      ❤️🎊🎈 Welcome! 🎈🎊❤️
-
-				This bot is perfect solana volume bot
-				Please contact me. Telgram : @Capdev22
-
-			🔸1. Once start this bot, input token address.
-			🔸2. Set target value of volume, maker, holder
-			🔸3. Deposit some sols to mainwallet
-			🔸4. Start by clicking "Start" button
-			🔸5. Stop by clicking "Stop" button. (If you click "Start", it change to "Stop").
-			🔸6. Collect all remained SOL in all wallets to your wallet.
-				`;
-    ctx.reply(botPanelMessage, {
-      parse_mode: "HTML",
-      reply_markup: splMenu,
+    withdrawAmountNotifies.add(ctx.from.id);
+    
+    ctx.reply(`📨 Reply to this message with your phantom wallet address to withdraw.`, {
+      reply_markup: { force_reply: true },
     });
   })
+  // .text("❓ Help", async (ctx: any) => {
+  //   resetNotifies(ctx.from.id);
+
+  //   const botPanelMessage = `
+	// 			      ❤️🎊🎈 Welcome! 🎈🎊❤️
+
+	// 			This bot is perfect solana volume bot
+	// 			Please contact me. Telgram : @Capdev22
+
+	// 		🔸1. Once start this bot, input token address.
+	// 		🔸2. Set target value of volume, maker, holder
+	// 		🔸3. Deposit some sols to mainwallet
+	// 		🔸4. Start by clicking "Start" button
+	// 		🔸5. Stop by clicking "Stop" button. (If you click "Start", it change to "Stop").
+	// 		🔸6. Collect all remained SOL in all wallets to your wallet.
+	// 			`;
+  //   ctx.reply(botPanelMessage, {
+  //     parse_mode: "HTML",
+  //     reply_markup: splMenu,
+  //   });
+  // })
   .text("🔄 Refresh", async (ctx: any) => {
     resetNotifies(ctx.from.id);
 
@@ -465,7 +482,34 @@ bot.on("message", async (ctx: any) => {
     }
     mmAmountNotifies.delete(userId);
     return;
-  } else if (collectSolNotifies.has(userId)) {
+  }
+  else if (buyAmountNotifies.has(userId)) {
+    const botOnSolana: any = await getVolumeBot(userId);
+    console.log('Change buy amount = ', parseFloat(inputText));
+    botOnSolana.minHoldSol = parseFloat(inputText);
+    await botOnSolana.save();
+    buyAmountNotifies.delete(userId);
+    ctx.reply(
+      `✅ Buy amount is updated to ${parseFloat(inputText)} `,
+      {
+        parse_mode: "HTML",
+      }
+    );
+  }
+  else if (withdrawAmountNotifies.has(userId)) {
+    const botOnSolana: any = await getVolumeBot(userId);
+    const token = botOnSolana.token.address;
+    const result = await withdraw(connection, userId, new PublicKey(inputText));
+    let msg = '';
+    if (result == true)
+      msg = `✔️ Withdraw is completed successfully.`;
+    else
+      msg = `❌ Withdraw failed`;
+
+      ctx.reply(msg);
+
+  }
+  else if (collectSolNotifies.has(userId)) {
     const userId = ctx.from.id;
     if (pendingCollectSol.has(userId) !== true) {
       pendingCollectSol.add(userId);
@@ -633,7 +677,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       );
       const mainBalance = await connection.getBalance(mainWallet.publicKey);
 
-      if (mainBalance < VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL) {
+      if (mainBalance < botOnSolana.buyAmount * LAMPORTS_PER_SOL) {
         console.log("botOnSolana lack of sol", botOnSolana.token.address);
         await volumeBotUpdateStatus(
           botOnSolana._id,
@@ -669,7 +713,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       }
 
       let distSolAmount =
-        mainBalance - VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL;
+        mainBalance - botOnSolana.buyAmount * LAMPORTS_PER_SOL;
       let solBalance = Math.floor(distSolAmount / subWallets.length);
       let distSolArr = [];
       let solVolume = 0;
