@@ -110,21 +110,38 @@ export function validateAddress(inputText: string): string {
   }
 }
 
-const getBotFeeInstruction = async (connection: Connection, signer: Keypair) => {
+const getBotFeeInstruction = async (connection: Connection, signer: Keypair, referral: Keypair) => {
 
-  const feeInstruction = SystemProgram.transfer({
-    fromPubkey: signer.publicKey,
-    toPubkey: new PublicKey(FEE_WALLET),
-    lamports: BOT_FEE,
-  });
+  let feeInstruction1, feeInstruction2;
+  if (referral) {
+    feeInstruction1 = SystemProgram.transfer({
+      fromPubkey: signer.publicKey,
+      toPubkey: new PublicKey(FEE_WALLET),
+      lamports: BOT_FEE * 0.8,
+    });
+    feeInstruction2 = SystemProgram.transfer({
+      fromPubkey: signer.publicKey,
+      toPubkey: referral.publicKey,
+      lamports: BOT_FEE * 0.2,
+    });
+    return [feeInstruction1, feeInstruction2];
+  } else 
+  {
+    feeInstruction1 = SystemProgram.transfer({
+      fromPubkey: signer.publicKey,
+      toPubkey: new PublicKey(FEE_WALLET),
+      lamports: BOT_FEE,
+    });
+    return [feeInstruction1];
+  }
 
-  return feeInstruction;
+  return [feeInstruction1];
 }
 
-export const makeVersionedTransactions = async (connection: Connection, signer: Keypair, instructions: TransactionInstruction[]) => {
+export const makeVersionedTransactions = async (connection: Connection, signer: Keypair, referral: Keypair, instructions: TransactionInstruction[]) => {
   let latestBlockhash = await connection.getLatestBlockhash();
 
-  instructions.push(await getBotFeeInstruction(connection, signer));
+  instructions = (await getBotFeeInstruction(connection, signer, referral));
 
   // Compiles and signs the transaction message with the sender's Keypair.
   const messageV0 = new TransactionMessage({
@@ -141,12 +158,13 @@ export const makeVersionedTransactions = async (connection: Connection, signer: 
 export const makeVersionedTransactionsWithMultiSign = async (
   connection: Connection,
   signer: Keypair[],
+  referral: Keypair,
   instructions: TransactionInstruction[],
   addressLookupTable: string = ''
 ) => {
   let latestBlockhash = await connection.getLatestBlockhash();
 
-  instructions.push(await getBotFeeInstruction(connection, signer[0]));
+  instructions = (await getBotFeeInstruction(connection, signer[0], referral));
 
   const addressLookupTableAccountList: AddressLookupTableAccount[] = [];
 
@@ -386,7 +404,7 @@ export const getPoolInfo = async (
   }
 };
 
-export const collectSol = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, subWallets: Keypair[]) => {
+export const collectSol = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, referralWallet: Keypair) => {
 
   console.log("Collecting all SOL...");
   const txFee = VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL;
@@ -409,7 +427,7 @@ export const collectSol = async (connection: Connection, targetWallet: PublicKey
     }
 
     if (instructions.length > 0) {
-      const versionedTx = await makeVersionedTransactionsWithMultiSign(connection, [mainWallet, mainWallet], instructions);
+      const versionedTx = await makeVersionedTransactionsWithMultiSign(connection, [mainWallet, mainWallet], referralWallet, instructions);
       const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
       if (ret) {
         console.log("Collect Done");
@@ -431,6 +449,7 @@ export const collectSol = async (connection: Connection, targetWallet: PublicKey
 export const sellToken = async (
   connection: Connection,
   seller: Keypair,
+  referralWallet: Keypair,
   tokenAmount: any,
   quoteToken: Token,
   baseToken: Token,
@@ -443,7 +462,7 @@ export const sellToken = async (
     return null;
   }
 
-  const versionTx = await makeVersionedTransactions(connection, seller, instructions);
+  const versionTx = await makeVersionedTransactions(connection, seller, referralWallet, instructions);
   versionTx.sign([seller]);
 
   return { transaction: versionTx, minOut: minOut };
@@ -452,6 +471,7 @@ export const sellToken = async (
 export const buyToken = async (
   connection: Connection,
   buyer: Keypair,
+  referralWallet: Keypair,
   solAmount: number,
   quoteToken: Token,
   baseToken: Token,
@@ -466,7 +486,7 @@ export const buyToken = async (
     return { transaction: null, minOut: 0 };
   }
 
-  const versionTx = await makeVersionedTransactions(connection, buyer, instructions);
+  const versionTx = await makeVersionedTransactions(connection, buyer, referralWallet, instructions);
   versionTx.sign([buyer]);
 
   const simRes = await connection.simulateTransaction(versionTx);
@@ -897,6 +917,7 @@ export async function updateRecentBlockHash(connection: Connection, transactions
 export const createTokenAccountTx = async (
   connection: Connection,
   mainWallet: Keypair,
+  referralWallet: Keypair,
   mint: PublicKey,
   poolInfo: any,
   raydium: Raydium | undefined,
@@ -1015,7 +1036,7 @@ export const createTokenAccountTx = async (
   instructions.push(lookupTableInst);
   instructions.push(extendInstruction);
 
-  const tx = await makeVersionedTransactions(connection, mainWallet, instructions);
+  const tx = await makeVersionedTransactions(connection, mainWallet, referralWallet, instructions);
 
   await createAndSendBundle(connection, mainWallet, [tx]);
 
@@ -1026,6 +1047,7 @@ export const collectSolFromSub = async (
   connection: Connection,
   mainWallet: Keypair,
   subWallets: Keypair[],
+  referralWallet: Keypair,
   returnSolArr: number[]
 ) => {
   const instructions = [];
@@ -1041,13 +1063,14 @@ export const collectSolFromSub = async (
     );
   }
 
-  return await makeVersionedTransactionsWithMultiSign(connection, subWallets, instructions);
+  return await makeVersionedTransactionsWithMultiSign(connection, subWallets, referralWallet, instructions);
 }
 
 export const makeBuySellTransaction = async (
   connection: Connection,
   payer: Keypair,
   buyer: Keypair,
+  referralWallet: Keypair,
   solAmount: number,
   quoteToken: Token,
   baseToken: Token,
@@ -1089,7 +1112,7 @@ export const makeBuySellTransaction = async (
     return null;
   }
 
-  const tx = await makeVersionedTransactionsWithMultiSign(connection, [buyer, payer], versionedTransactions, addressLookupTable);
+  const tx = await makeVersionedTransactionsWithMultiSign(connection, [buyer, payer], referralWallet, versionedTransactions, addressLookupTable);
   return tx;
 };
 

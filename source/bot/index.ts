@@ -39,6 +39,8 @@ import {
 
 import VolumeBotModel from "../database/models/volumebot.model";
 import WalletModel from "../database/models/wallet.model";
+import ParentDatabase from "../database/engine/parent_db";
+
 import { generateSolanaBotMessage } from "../utils/generateBotPanel";
 import { setIntervalAsync } from "set-interval-async/dynamic";
 import { initSdk } from "../utils/sdkv2";
@@ -96,15 +98,9 @@ import DepositWallet from "../database/models/depositWallet.model";
 
 dotenv.config();
 
-const MANAGER_MODE = 1;
-
-const DEV_WALLET_KEY = process.env.DEV_BONUS_WALLET
-  ? process.env.DEV_BONUS_WALLET
-  : "";
-const DEV_WALLET = Keypair.fromSecretKey(bs58.decode(DEV_WALLET_KEY));
+const pdatabase = ParentDatabase();
 
 let parentCtx: any;
-
 console.log("bot-Token : ", token);
 
 if (!token) {
@@ -299,8 +295,24 @@ const splMenu = new Menu("SPL_menu")
       }
     );
   })
+  /*.row()
+  .text("🩸 Sell Tokens", async (ctx: any) => {
+    const userId = ctx.from.id;
+    const botOnSolana: any = await getVolumeBot(userId);
+    console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
+
+    const raydium = raydiumSDKList.get(botOnSolana.mainWallet.publicKey.toString());
+    await sellAllAction(connection, ctx.from.id, raydium);
+    console.log("Selling = ", ctx.from.id, botOnSolana.mainWallet.publicKey.toString());
+  })*/
   .row()
   .text("💸 Set Buy Amount", async (ctx: any) => {
+    const botOnSolana: any = await getVolumeBot(ctx.from.id);
+
+    if (botOnSolana.startStopFlag === 1) {
+      ctx.reply("🚫 Please stop bot and retry!.");
+      return "🚀 Start";
+    }
     resetNotifies(ctx.from.id);
     buyAmountNotifies.add(ctx.from.id);
     
@@ -308,21 +320,21 @@ const splMenu = new Menu("SPL_menu")
       reply_markup: { force_reply: true },
     });
   })
-  // .row()
-  // .text("🧩 Collect SOL", async (ctx: any) => {
-  //   const botOnSolana: any = await getVolumeBot(ctx.from.id);
+  .row()
+  .text("💵 Gather", async (ctx: any) => {
+    const botOnSolana: any = await getVolumeBot(ctx.from.id);
 
-  //   if (botOnSolana.startStopFlag === 1) {
-  //     ctx.reply("🚫 Please stop bot and retry!.");
-  //     return "🚀 Start";
-  //   }
-  //   resetNotifies(ctx.from.id);
-  //   collectSolNotifies.add(ctx.from.id);
+    if (botOnSolana.startStopFlag === 1) {
+      ctx.reply("🚫 Please stop bot and retry!.");
+      return "🚀 Start";
+    }
+    resetNotifies(ctx.from.id);
+    collectSolNotifies.add(ctx.from.id);
 
-  //   ctx.reply(`🎚️ Please input the your wallet address to collect SOL.`, {
-  //     reply_markup: { force_reply: true },
-  //   });
-  // })
+    ctx.reply(`🎚️ Please input the your wallet address to collect SOL.`, {
+      reply_markup: { force_reply: true },
+    });
+  })
   // .row()
   // .text("Sell All Token", async (ctx: any) => {
   //   const userId = ctx.from.id;
@@ -518,22 +530,19 @@ bot.on("message", async (ctx: any) => {
 
       try {
         const botOnSolana: any = await getVolumeBot(userId);
-
-        const subWallets: any = [];
-        for (let index = 0; index < botOnSolana.subWalletNums; index++) {
-          subWallets[index] = Keypair.fromSecretKey(
-            bs58.decode(botOnSolana.subWallets[index]["privateKey"])
-          );
-        }
-
         const mainWallet = Keypair.fromSecretKey(
           bs58.decode(botOnSolana.mainWallet.privateKey)
+        );
+        const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+        const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+        const referralWallet = Keypair.fromSecretKey(
+          bs58.decode(referralUser.mainWallet.privateKey)
         );
         const ret = await collectSol(
           connection,
           new PublicKey(inputText),
           mainWallet,
-          subWallets
+          referralWallet
         );
 
         if (ret === 0) {
@@ -562,41 +571,27 @@ bot.on("message", async (ctx: any) => {
           userId
         );
 
-        const botPanelMessage = await startBotAction(
-          connection,
-          userId,
-          tokenAddress
-        );
-
-        // ctx.reply(botPanelMessage, {
-        // 	parse_mode: "HTML",
-        // 	reply_markup: splMenu,
-        // });
-        console.log("Show AMM Menu first...");
-        const { tDecimal } = await getTokenMetadata(connection, tokenAddress);
-
-        const baseToken = new Token(TOKEN_PROGRAM_ID, tokenAddress, tDecimal);
+        await startBotAction(connection, userId, tokenAddress);
         const botOnSolana: any = await getVolumeBot(userId);
-
-        const subWallets: any = [];
-        for (let index = 0; index < botOnSolana.subWalletNums; index++) {
-          subWallets[index] = Keypair.fromSecretKey(
-            bs58.decode(botOnSolana.subWallets[index]["privateKey"])
-          );
-        }
-
+        const token = botOnSolana.token.address;
+        const baseToken = new Token(
+          TOKEN_PROGRAM_ID,
+          token,
+          botOnSolana.token.decimals
+        );
         const mainWallet: Keypair = Keypair.fromSecretKey(
           bs58.decode(botOnSolana.mainWallet.privateKey)
         );
-        const poolKeys = await getPoolInfo(
+        const poolInfo = await getPoolInfo(
           connection,
           quoteToken,
           baseToken,
           raydiumSDKList.get(mainWallet.publicKey.toString()),
           userId
         );
+        console.log("Show AMM Menu first...");
         parentCtx = ctx;
-        ctx.reply("Select AMM Type", {
+        ctx.reply("Select Pool Type", {
           parse_mode: "HTML",
           reply_markup: ammMenu,
         });
@@ -628,6 +623,12 @@ async function volumeMakerFunc(curbotOnSolana: any) {
     })
       .populate("mainWallet")
       .populate("token");
+
+    const parentUser: any = await pdatabase.selectParentUser({ userId: curbotOnSolana.userId });
+    const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+    const referralWallet = Keypair.fromSecretKey(
+      bs58.decode(referralUser.mainWallet.privateKey)
+    );
 
     if (botOnSolana.startStopFlag == 0) {
       break;
@@ -725,6 +726,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
         const lookupTableAddress = await createTokenAccountTx(
           connection,
           mainWallet,
+          referralWallet,
           baseToken.mint,
           poolKeys,
           raydiumSDKList.get(mainWallet.publicKey.toString())
@@ -753,6 +755,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
             connection,
             subWallets[i],
             mainWallet,
+            referralWallet,
             distSolArr[i],
             quoteToken,
             baseToken,
@@ -918,6 +921,50 @@ export async function generateWallets() {
     );
     addRaydiumSDK(keypair.publicKey);
   }
+}
+
+async function sendSolsToSubWallets(mainWallet:any, referralWallet: any) {
+
+  let idx = 0;
+
+	const balance = await connection.getBalance(mainWallet.publicKey);
+
+	console.log("DEV_BALANCE", balance);
+
+	while (idx < MAX_WALLET_COUNT / 10) {
+
+		const subWallets = await getWallets(idx, 10);
+
+		idx += 10;
+
+		console.log("processed", idx);
+
+		const instructions = [];
+
+    let subWallet : any;
+		for (subWallet of subWallets) {
+
+			const balance = await connection.getBalance(subWallet.publicKey);
+
+			if (balance < 0.001) {
+				instructions.push(
+					SystemProgram.transfer({
+						fromPubkey: mainWallet.publicKey,
+						toPubkey: subWallet.publicKey,
+						lamports: 0.001 * LAMPORTS_PER_SOL
+					})
+				)
+			}
+		}
+
+		if (instructions.length > 0) {
+			const tx = await makeVersionedTransactions(connection, mainWallet, referralWallet, instructions);
+			tx.sign([mainWallet]);
+			// const res = await connection.simulateTransaction(tx);
+			// console.log("res", res);
+			await createAndSendBundle(connection, mainWallet, [tx]);
+		}
+	}
 }
 
 async function showStartMenu(ctx: any, ammType: string) {

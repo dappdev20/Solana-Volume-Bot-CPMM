@@ -98,6 +98,7 @@ export function generateSolanaBotMessage(
 	botStats: BotStats,
 	walletInfo: WalletInfo
 ): string {
+
 	return `🏅 Welcome to ${process.env.BOT_TITLE} 🏅.
 The fastest and most efficient auto volume bot on Solana.
 

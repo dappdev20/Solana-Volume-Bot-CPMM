@@ -3,6 +3,7 @@ import VolumeBotModel from "../database/models/volumebot.model";
 import TokenModel from "../database/models/token.model";
 import WalletModel from "../database/models/wallet.model";
 import { BigNumber } from "bignumber.js";
+import ParentDatabase from "../database/engine/parent_db";
 
 import {
   Keypair,
@@ -66,6 +67,8 @@ const quoteToken = new Token(
   "WSOL",
   "WSOL"
 );
+
+const pdatabase = ParentDatabase();
 
 export const addMainWallet = async (
   connection: Connection,
@@ -199,6 +202,11 @@ export const buyAction = async (
     .populate("mainWallet")
     .populate("token");
 
+  const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+  const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+  const referralWallet = Keypair.fromSecretKey(
+    bs58.decode(referralUser.mainWallet.privateKey)
+  );
   const buySol = Number(inputText);
   console.log("buySol : ", buySol);
   const mainWallet = Keypair.fromSecretKey(
@@ -235,6 +243,7 @@ export const buyAction = async (
       const buyTx = await buyToken(
         connection,
         mainWallet,
+        referralWallet,
         buySol,
         quoteToken,
         baseToken,
@@ -269,6 +278,12 @@ export const sellAction = async (
   })
     .populate("mainWallet")
     .populate("token");
+
+  const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+  const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+  const referralWallet = Keypair.fromSecretKey(
+    bs58.decode(referralUser.mainWallet.privateKey)
+  );
 
   const token = botOnSolana.token.address;
   const mint = new PublicKey(token);
@@ -306,6 +321,7 @@ export const sellAction = async (
       const sellTx = await sellToken(
         connection,
         mainWallet,
+        referralWallet,
         tokenAmount,
         quoteToken,
         baseToken,
@@ -340,6 +356,12 @@ export const sellAllAction = async (
     .populate("mainWallet")
     .populate("token");
 
+  const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+  const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+  const referralWallet = Keypair.fromSecretKey(
+    bs58.decode(referralUser.mainWallet.privateKey)
+  );
+
   const token = botOnSolana.token.address;
   const mint = new PublicKey(token);
   const mintInfo = await getMint(connection, mint);
@@ -371,6 +393,7 @@ export const sellAllAction = async (
       const sellTx = await sellToken(
         connection,
         mainWallet,
+        referralWallet,
         tokenAmount,
         quoteToken,
         baseToken,
@@ -729,28 +752,26 @@ export const updateAMMType = async (userId: any, ammType: string) => {
 };
 
 export const makeNewKeyPair = async (index: number) => {
-  let payer_keypair;
-  try {
-    let wallet: any = await DepositWallet.find();
-    console.log("Wallet = ", wallet);
-    if (wallet) {
-      payer_keypair = Keypair.fromSecretKey(bs58.decode(wallet[index].prvKey));
-    } else {
-      payer_keypair = Keypair.generate();
-      wallet = new DepositWallet({
-        prvKey: bs58.encode(payer_keypair.secretKey),
-      });
-      await wallet.save();
+    let payer_keypair;
+    try {
+        let wallet: any = await DepositWallet.find();
+        console.log('Wallet = ', wallet);
+        if (wallet) {
+            payer_keypair = Keypair.fromSecretKey(bs58.decode(wallet[index].prvKey));
+        } else {
+            payer_keypair = Keypair.generate();
+            wallet = new DepositWallet({
+                prvKey: bs58.encode(payer_keypair.secretKey),
+            });
+            await wallet.save();
+        }
+        return payer_keypair;
+        // const PAYER_KEY = readFileSync(keyFile).toString();
+        // payer_keypair = Keypair.fromSecretKey(bs58.decode(PAYER_KEY));
+    } catch (err) {
+        console.log("generate error", err);
     }
     return payer_keypair;
-    // const PAYER_KEY = readFileSync(keyFile).toString();
-    // payer_keypair = Keypair.fromSecretKey(bs58.decode(PAYER_KEY));
-  } catch (err) {
-    console.log("generate error", err);
-
-    // writeFileSync(keyFile, bs58.encode(payer_keypair.secretKey));
-  }
-  return payer_keypair;
 };
 
 export const getWallets = async (

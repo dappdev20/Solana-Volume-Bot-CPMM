@@ -60,7 +60,10 @@ const main = async () => {
             const instructions = [];
 
             for (const wallet of wallets) {
+                if (!wallet)
+                    continue;
 
+                console.log("wallet.privateKey", bs58.encode(wallet.secretKey));
                 console.log("wallet.publicKey", wallet.publicKey.toString());
                 const balance = await connection.getBalance(wallet.publicKey);
                 const accountList = await getOwnerTokenAccounts(wallet);
@@ -179,7 +182,6 @@ const main = async () => {
     walletIdx = 0;
 
     while (walletIdx < MAX_WALLET_COUNT) {
-
         const versionedTx = [];
         const walletList = [];
         let idxTx = 0;
@@ -191,10 +193,10 @@ const main = async () => {
             const instructions = [];
 
             for (const wallet of wallets) {
+                if (!wallet)
+                    continue;
 
                 const currentInst = instructions.length;
-
-                // console.log("wallet.publicKey", wallet.publicKey.toString());
                 const accountList = await getOwnerTokenAccounts(wallet);
 
                 for (const account of accountList) {
