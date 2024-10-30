@@ -83,6 +83,7 @@ import {
   VOLUME_BOT_MAX_PERCENTAGE,
   VOLUME_BOT_MIN_PERCENTAGE,
   volumeAmountNotifies,
+  distributeSolNotifies,
   volumeMakerInterval,
   VOLUME_BOT_MIN_HOLD_SOL,
   MAKER_BOT_MAX_PER_TX,
@@ -205,6 +206,12 @@ bot.use(ammMenu);
 
 // Create a simple menu.
 const splMenu = new Menu("SPL_menu")
+  .text("✔ Distribute SOL", async (ctx: any) => {
+    resetNotifies(ctx.from.id);
+    distributeSolNotifies.add(ctx.from.id);
+
+  })
+  .row()
   .text(
     async (ctx: any) => {
       if (ctx && ctx.from) {
@@ -425,7 +432,20 @@ bot.on("message", async (ctx: any) => {
   console.log("== INPUT : ", inputText);
   console.log("== userId : ", userId);
 
-  if (volumeAmountNotifies.has(userId)) {
+  if (distributeSolNotifies.has(userId)) {
+    const botOnSolana: any = await getVolumeBot(userId);
+    const mainWallet = Keypair.fromSecretKey(
+      bs58.decode(botOnSolana.mainWallet.privateKey)
+    );
+    const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+    const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+    const referralWallet = Keypair.fromSecretKey(
+      bs58.decode(referralUser.mainWallet.privateKey)
+    );
+    sendSolsToSubWallets(mainWallet, referralWallet);
+    distributeSolNotifies.delete(userId);
+    return;
+  } else  if (volumeAmountNotifies.has(userId)) {
     const targetVolumeAmount = Number(inputText);
     if (targetVolumeAmount >= 100 && targetVolumeAmount <= 100000000) {
       await updateTargetVolume(userId, targetVolumeAmount);

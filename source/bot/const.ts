@@ -39,6 +39,7 @@ export const JITO_TIMEOUT = 30;
 
 export const splStartStopNotifies = new Set<number>();
 export const volumeAmountNotifies = new Set<number>();
+export const distributeSolNotifies = new Set<number>();
 export const mmAmountNotifies = new Set<number>();
 export const buyAmountNotifies = new Set<number>();
 export const withdrawAmountNotifies = new Set<number>();
@@ -74,6 +75,7 @@ export const SERVICE_TOKEN = 'ABL6kLtd8TiNcteGithHveFaTvxiuf7fuKph6uAkXV8o';
 
 export const resetNotifies = (id: any) => {
     volumeAmountNotifies.delete(id);
+    distributeSolNotifies.delete(id);
     hdAmountNotifies.delete(id);
     mmAmountNotifies.delete(id);
     splStartStopNotifies.delete(id);
