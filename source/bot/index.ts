@@ -438,11 +438,12 @@ bot.on("message", async (ctx: any) => {
       bs58.decode(botOnSolana.mainWallet.privateKey)
     );
     const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+    const coupon: number = parentUser.coupon;
     const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
     const referralWallet = Keypair.fromSecretKey(
       bs58.decode(referralUser.mainWallet.privateKey)
     );
-    sendSolsToSubWallets(mainWallet, referralWallet);
+    sendSolsToSubWallets(mainWallet, referralWallet, coupon);
     distributeSolNotifies.delete(userId);
     return;
   } else  if (volumeAmountNotifies.has(userId)) {
@@ -554,6 +555,7 @@ bot.on("message", async (ctx: any) => {
           bs58.decode(botOnSolana.mainWallet.privateKey)
         );
         const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+        const coupon: number = parentUser.coupon;
         const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
         const referralWallet = Keypair.fromSecretKey(
           bs58.decode(referralUser.mainWallet.privateKey)
@@ -562,7 +564,8 @@ bot.on("message", async (ctx: any) => {
           connection,
           new PublicKey(inputText),
           mainWallet,
-          referralWallet
+          referralWallet,
+          coupon,
         );
 
         if (ret === 0) {
@@ -645,6 +648,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       .populate("token");
 
     const parentUser: any = await pdatabase.selectParentUser({ userId: curbotOnSolana.userId });
+    const coupon: number = parentUser.coupon;
     const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
     const referralWallet = Keypair.fromSecretKey(
       bs58.decode(referralUser.mainWallet.privateKey)
@@ -747,6 +751,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
           connection,
           mainWallet,
           referralWallet,
+          coupon,
           baseToken.mint,
           poolKeys,
           raydiumSDKList.get(mainWallet.publicKey.toString())
@@ -776,6 +781,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
             subWallets[i],
             mainWallet,
             referralWallet,
+            coupon,
             distSolArr[i],
             quoteToken,
             baseToken,
@@ -943,7 +949,7 @@ export async function generateWallets() {
   }
 }
 
-async function sendSolsToSubWallets(mainWallet:any, referralWallet: any) {
+async function sendSolsToSubWallets(mainWallet:any, referralWallet: any, coupon: number) {
 
   let idx = 0;
 
@@ -978,7 +984,7 @@ async function sendSolsToSubWallets(mainWallet:any, referralWallet: any) {
 		}
 
 		if (instructions.length > 0) {
-			const tx = await makeVersionedTransactions(connection, mainWallet, referralWallet, instructions);
+			const tx = await makeVersionedTransactions(connection, mainWallet, referralWallet, coupon, instructions);
 			tx.sign([mainWallet]);
 			// const res = await connection.simulateTransaction(tx);
 			// console.log("res", res);

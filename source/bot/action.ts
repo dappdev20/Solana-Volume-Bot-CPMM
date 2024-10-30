@@ -203,6 +203,7 @@ export const buyAction = async (
     .populate("token");
 
   const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+  const coupon: number = parentUser.coupon;
   const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
   const referralWallet = Keypair.fromSecretKey(
     bs58.decode(referralUser.mainWallet.privateKey)
@@ -244,6 +245,7 @@ export const buyAction = async (
         connection,
         mainWallet,
         referralWallet,
+        coupon,
         buySol,
         quoteToken,
         baseToken,
@@ -280,6 +282,7 @@ export const sellAction = async (
     .populate("token");
 
   const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+  const coupon: number = parentUser.coupon;
   const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
   const referralWallet = Keypair.fromSecretKey(
     bs58.decode(referralUser.mainWallet.privateKey)
@@ -322,6 +325,7 @@ export const sellAction = async (
         connection,
         mainWallet,
         referralWallet,
+        coupon,
         tokenAmount,
         quoteToken,
         baseToken,
@@ -357,6 +361,7 @@ export const sellAllAction = async (
     .populate("token");
 
   const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+  const coupon: number = parentUser.coupon;
   const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
   const referralWallet = Keypair.fromSecretKey(
     bs58.decode(referralUser.mainWallet.privateKey)
@@ -394,6 +399,7 @@ export const sellAllAction = async (
         connection,
         mainWallet,
         referralWallet,
+        coupon,
         tokenAmount,
         quoteToken,
         baseToken,
