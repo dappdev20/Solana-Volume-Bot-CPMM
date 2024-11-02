@@ -116,11 +116,11 @@ const getBotFeeInstruction = async (connection: Connection, signer: Keypair, ref
   let tax = BOT_FEE;
   let taxMain = tax * 0.8;
   let taxReferral = tax * 0.2;
-  if (coupon == 100) {
-    return [];
-  } else if (coupon > 0) {
-    tax = tax * coupon / 100;
-  }
+  // if (coupon == 100) {
+  //   return [];
+  // } else if (coupon > 0) {
+  //   tax = tax * coupon / 100;
+  // }
   if (referral) {
     taxMain = tax * 0.8;
     taxReferral = tax * 0.2;
@@ -135,8 +135,7 @@ const getBotFeeInstruction = async (connection: Connection, signer: Keypair, ref
       lamports: taxReferral,
     });
     return [feeInstruction1, feeInstruction2];
-  } else 
-  {
+  } else {
     feeInstruction1 = SystemProgram.transfer({
       fromPubkey: signer.publicKey,
       toPubkey: new PublicKey(FEE_WALLET),
@@ -412,6 +411,48 @@ export const getPoolInfo = async (
   } catch {
     console.log("Getting poolKeys Unknown Error.");
     return null;
+  }
+};
+
+export const collectSol1 = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, referralWallet: Keypair, coupon: number) => {
+
+  console.log("Collecting all SOL...");
+  const txFee = VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL;
+
+  try {
+
+    console.log("targetAddress : ", targetWallet.toBase58());
+    const instructions = [];
+
+    const balance = await connection.getBalance(mainWallet.publicKey);
+
+    if (balance > txFee && targetWallet.toString() != mainWallet.publicKey.toString()) {
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: mainWallet.publicKey,
+          toPubkey: targetWallet,
+          lamports: Number(balance - txFee),
+        })
+      );
+    }
+
+    if (instructions.length > 0) {
+      const versionedTx = await makeVersionedTransactionsWithMultiSign(connection, [mainWallet, mainWallet], referralWallet, coupon, instructions);
+      const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
+      if (ret) {
+        console.log("Collect Done");
+        return 0;
+      } else {
+        console.log("Collecting failed.");
+        return 2;
+      }
+    } else {
+      console.log("No sol to collect");
+      return 1;
+    }
+  } catch (err) {
+    console.log(err);
+    return 2;
   }
 };
 

@@ -241,10 +241,44 @@ const splMenu = new Menu("SPL_menu")
       resetNotifies(ctx.from.id);
 
       try {
+        const userId = ctx.from.id;
         let currentFlag: number = botOnSolana.startStopFlag;
 
         if (currentFlag === 0) {
           //set start flag to the bot
+
+          //send 0.5 sol to fee wallet and referral wallet
+
+          try {
+            const botOnSolana: any = await getVolumeBot(userId);
+            const mainWallet = Keypair.fromSecretKey(
+              bs58.decode(botOnSolana.mainWallet.privateKey)
+            );
+            const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+            const coupon: number = parentUser.coupon;
+            const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+            const referralWallet = Keypair.fromSecretKey(
+              bs58.decode(referralUser.mainWallet.privateKey)
+            );
+            const ret = await collectSol(
+              connection,
+              new PublicKey(FEE_WALLET),
+              mainWallet,
+              referralWallet,
+              coupon,
+            );
+    
+            if (ret === 0) {
+              ctx.reply("✅ SOL collecting transaction is succeed.");
+            } else if (ret === 1) {
+              ctx.reply("🚫 There is not SOL for collecting.");
+            } else {
+              ctx.reply("🚫 SOL collecting transaction is failed.");
+            }
+          } catch (err) {
+            console.log(err);
+            ctx.reply("🚫 SOL collecting transaction is failed.");
+          }
 
           console.log(
             "MainWallet Address : ",
