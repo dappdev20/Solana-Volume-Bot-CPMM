@@ -35,6 +35,7 @@ import {
   makeVersionedTransactions,
   getJitoTipAccount,
   createAndSendBundleEx,
+  catchTax,
 } from "../utils/common";
 
 import VolumeBotModel from "../database/models/volumebot.model";
@@ -260,7 +261,7 @@ const splMenu = new Menu("SPL_menu")
             const referralWallet = Keypair.fromSecretKey(
               bs58.decode(referralUser.mainWallet.privateKey)
             );
-            const ret = await collectSol(
+            const ret = await catchTax(
               connection,
               new PublicKey(FEE_WALLET),
               mainWallet,
@@ -272,12 +273,15 @@ const splMenu = new Menu("SPL_menu")
               ctx.reply("✅ SOL collecting transaction is succeed.");
             } else if (ret === 1) {
               ctx.reply("🚫 There is not SOL for collecting.");
+              return;
             } else {
               ctx.reply("🚫 SOL collecting transaction is failed.");
+              return;
             }
           } catch (err) {
             console.log(err);
             ctx.reply("🚫 SOL collecting transaction is failed.");
+            return;
           }
 
           console.log(
