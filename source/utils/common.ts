@@ -430,7 +430,7 @@ export const catchTax = async (connection: Connection, targetWallet: PublicKey, 
     if (referralWallet) {
       taxMain = tax * (100 - REFERRAL_FEE_PERCENT);
       taxReferral = tax - taxMain;
-  }
+    }
 
     console.log("targetAddress : ", targetWallet.toBase58());
     const instructions = [];
