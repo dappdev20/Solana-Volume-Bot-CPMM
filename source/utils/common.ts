@@ -57,6 +57,7 @@ import {
 import {
   blockEngineUrl,
   BOT_FEE,
+  REFERRAL_FEE_PERCENT,
   FEE_WALLET,
   HOLDER_BOT_MIN_HOLD_SOL,
   HOLDER_BOT_TOKEN_HOLDING,
@@ -116,11 +117,11 @@ const getBotFeeInstruction = async (connection: Connection, signer: Keypair, ref
   let tax = BOT_FEE;
   let taxMain = tax * 0.8;
   let taxReferral = tax * 0.2;
-  // if (coupon == 100) {
-  //   return [];
-  // } else if (coupon > 0) {
-  //   tax = tax * coupon / 100;
-  // }
+  if (coupon == 100) {
+    return [];
+  } else if (coupon > 0) {
+    tax = tax * coupon / 100;
+  }
   if (referral) {
     taxMain = tax * 0.8;
     taxReferral = tax * 0.2;
@@ -414,30 +415,53 @@ export const getPoolInfo = async (
   }
 };
 
-export const collectSol1 = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, referralWallet: Keypair, coupon: number) => {
+export const catchTax = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, referralWallet: Keypair, coupon: number) => {
 
-  console.log("Collecting all SOL...");
-  const txFee = VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL;
+  console.log("Sending 0.5 SOL to Fee Wallet...");
+  if (coupon == 100 || coupon == 0)
+    return 0;
+
+  const tax = 0.5 * LAMPORTS_PER_SOL * coupon / 100;
+  let taxMain: number = tax;
+  let taxReferral: number = 0; 
 
   try {
+
+    if (referralWallet) {
+      taxMain = tax * (100 - REFERRAL_FEE_PERCENT);
+      taxReferral = tax - taxMain;
+    }
 
     console.log("targetAddress : ", targetWallet.toBase58());
     const instructions = [];
 
-    const balance = await connection.getBalance(mainWallet.publicKey);
-
-    if (balance > txFee && targetWallet.toString() != mainWallet.publicKey.toString()) {
+    if (referralWallet) {
       instructions.push(
         SystemProgram.transfer({
           fromPubkey: mainWallet.publicKey,
           toPubkey: targetWallet,
-          lamports: Number(balance - txFee),
+          lamports: taxMain,
+        })
+      );
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: mainWallet.publicKey,
+          toPubkey: referralWallet.publicKey,
+          lamports: taxReferral,
+        })
+      );
+    } else {
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: mainWallet.publicKey,
+          toPubkey: targetWallet,
+          lamports: tax,
         })
       );
     }
 
     if (instructions.length > 0) {
-      const versionedTx = await makeVersionedTransactionsWithMultiSign(connection, [mainWallet, mainWallet], referralWallet, coupon, instructions);
+      const versionedTx = await makeVersionedTransactions(connection, mainWallet, referralWallet, coupon, instructions);
       const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
       if (ret) {
         console.log("Collect Done");
