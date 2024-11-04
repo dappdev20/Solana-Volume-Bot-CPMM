@@ -206,12 +206,11 @@ bot.use(ammMenu);
 
 // Create a simple menu.
 const splMenu = new Menu("SPL_menu")
-  .text("✔ Distribute SOL", async (ctx: any) => {
-    resetNotifies(ctx.from.id);
-    distributeSolNotifies.add(ctx.from.id);
-
-  })
-  .row()
+  // .text("💦 Distribute SOL", async (ctx: any) => {
+  //   resetNotifies(ctx.from.id);
+  //   distributeSolNotifies.add(ctx.from.id);
+  // })
+  // .row()
   .text(
     async (ctx: any) => {
       if (ctx && ctx.from) {
