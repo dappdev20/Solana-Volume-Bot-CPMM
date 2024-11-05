@@ -211,6 +211,21 @@ const splMenu = new Menu("SPL_menu")
     resetNotifies(ctx.from.id);
     distributeSolNotifies.add(ctx.from.id);
 
+    ctx.reply("✔ Distribute SOL to subwallets");
+    const botOnSolana: any = await getVolumeBot(ctx.from.id);
+    const mainWallet = Keypair.fromSecretKey(
+      bs58.decode(botOnSolana.mainWallet.privateKey)
+    );
+    const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
+    const coupon: number = parentUser.coupon;
+    const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+    let referralWallet: any
+    if (referralUser)
+      referralWallet = Keypair.fromSecretKey(
+        bs58.decode(referralUser.mainWallet.privateKey)
+      );
+    sendSolsToSubWallets(mainWallet, referralWallet, coupon);
+
   })
   .row()
   .text(
@@ -249,38 +264,48 @@ const splMenu = new Menu("SPL_menu")
           //set start flag to the bot
 
           //send 0.5 sol to fee wallet and referral wallet
-
           try {
             const botOnSolana: any = await getVolumeBot(userId);
             const mainWallet = Keypair.fromSecretKey(
               bs58.decode(botOnSolana.mainWallet.privateKey)
             );
-            const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+            const parentUser: any = await pdatabase.selectParentUser({ chatid: userId });
             const coupon: number = parentUser.coupon;
-            const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
-            const referralWallet = Keypair.fromSecretKey(
-              bs58.decode(referralUser.mainWallet.privateKey)
-            );
-            const ret = await catchTax(
-              connection,
-              new PublicKey(FEE_WALLET),
-              mainWallet,
-              referralWallet,
-              coupon,
-            );
-    
-            if (ret === 0) {
-              ctx.reply("✅ SOL collecting transaction is succeed.");
-            } else if (ret === 1) {
-              ctx.reply("🚫 There is not SOL for collecting.");
-              return;
-            } else {
-              ctx.reply("🚫 SOL collecting transaction is failed.");
-              return;
+            if (coupon == 0) {
+              parentUser.isAffiliated = true;
+              await parentUser.save();
+              return true;
+            }
+            const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+            let referralWallet: any;
+            console.log('referral user = ', referralUser);
+            if (referralUser)
+              referralWallet = Keypair.fromSecretKey(
+                bs58.decode(referralUser.mainWallet.privateKey)
+              );
+            
+            if (!parentUser.isAffiliated) {
+              console.log('Start sending tax ...');
+              const ret = await catchTax(
+                connection,
+                new PublicKey(FEE_WALLET),
+                mainWallet,
+                referralWallet,
+                coupon,
+              );
+      
+              if (ret == true) {
+                ctx.reply("✅ Tax Transaction Success");
+                parentUser.isAffiliated = true;
+                await parentUser.save();
+              } else if (ret == false) {
+                ctx.reply("❌ Tax Transaction Failed");
+                return;
+              }
             }
           } catch (err) {
             console.log(err);
-            ctx.reply("🚫 SOL collecting transaction is failed.");
+            ctx.reply("❌ Tax Transaction Failed");
             return;
           }
 
@@ -296,8 +321,7 @@ const splMenu = new Menu("SPL_menu")
             ctx.reply(
               `
 							You need to deposit ${botOnSolana.buyAmount} at least
-				
-							To achieve current target setting`
+              To achieve current target setting`
             );
             return;
           }
@@ -313,6 +337,7 @@ const splMenu = new Menu("SPL_menu")
           ctx.menu.update();
         } else {
           //set stop flag to the bot
+          console.log('Stopping ...');
           await VolumeBotModel.findByIdAndUpdate(botOnSolana?._id, {
             startStopFlag: 0,
             status: BOT_STATUS.STOPPED_BY_USER,
@@ -375,10 +400,41 @@ const splMenu = new Menu("SPL_menu")
     }
     resetNotifies(ctx.from.id);
     collectSolNotifies.add(ctx.from.id);
+    ctx.reply("⏱️ Please wait a minutes while gather the sol in your wallets...");
 
-    ctx.reply(`🎚️ Please input the your wallet address to collect SOL.`, {
-      reply_markup: { force_reply: true },
-    });
+    const mainWallet = Keypair.fromSecretKey(
+      bs58.decode(botOnSolana.mainWallet.privateKey)
+    );
+    const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
+    const coupon: number = parentUser.coupon;
+    const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+    let referralWallet: any;
+    if (referralUser)
+      referralWallet = Keypair.fromSecretKey(
+        bs58.decode(referralUser.mainWallet.privateKey)
+      );
+    
+    let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
+    const subWallets: any = await getWallets(
+      marketMakerMade,
+      MAKER_BOT_MAX_PER_TX
+    );
+    console.log('Start collecting...');
+    const ret: any = await collectSolFromSub(
+      connection,
+      mainWallet,
+      subWallets,
+      referralWallet,
+      coupon
+    );
+
+    if (ret === 0) {
+      ctx.reply("✅ SOL collecting transaction is succeed.");
+    } else if (ret === 1) {
+      ctx.reply("🚫 There is not SOL for collecting.");
+    } else {
+      ctx.reply("🚫 SOL collecting transaction is failed.");
+    }
   })
   // .row()
   // .text("Sell All Token", async (ctx: any) => {
@@ -582,7 +638,9 @@ bot.on("message", async (ctx: any) => {
   }
   else if (collectSolNotifies.has(userId)) {
     const userId = ctx.from.id;
+    console.log('collecting...');
     if (pendingCollectSol.has(userId) !== true) {
+      console.log('collecting1...');
       pendingCollectSol.add(userId);
 
       ctx.reply("ℹ Processing SOL collecting transaction...");
@@ -594,16 +652,24 @@ bot.on("message", async (ctx: any) => {
         );
         const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
         const coupon: number = parentUser.coupon;
-        const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
-        const referralWallet = Keypair.fromSecretKey(
-          bs58.decode(referralUser.mainWallet.privateKey)
+        const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+        let referralWallet: any;
+        if (referralUser)
+          referralWallet = Keypair.fromSecretKey(
+            bs58.decode(referralUser.mainWallet.privateKey)
+          );
+        
+        let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
+        const subWallets: any = await getWallets(
+          marketMakerMade,
+          MAKER_BOT_MAX_PER_TX
         );
-        const ret = await collectSol(
+        const ret: any = await collectSolFromSub(
           connection,
-          new PublicKey(inputText),
           mainWallet,
+          subWallets,
           referralWallet,
-          coupon,
+          coupon
         );
 
         if (ret === 0) {
@@ -706,10 +772,10 @@ async function volumeMakerFunc(curbotOnSolana: any) {
     let workedSeconds = botOnSolana.workedSeconds || 0;
     let newSpentSeconds = 0;
 
-    let volumeMade = botOnSolana.volumeMade || 0;
-    let volumePaid = botOnSolana.volumePaid || 0;
-    let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
-    let volumeTarget = botOnSolana.targetVolume || 0;
+    let volumeMade: number = botOnSolana.volumeMade || 0;
+    let volumePaid: number = botOnSolana.volumePaid || 0;
+    let marketMakerMade: number = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
+    let volumeTarget: number = botOnSolana.targetVolume || 0;
 
     try {
       const startTime = Date.now();
@@ -738,7 +804,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       const mainWallet: Keypair = Keypair.fromSecretKey(
         bs58.decode(botOnSolana.mainWallet.privateKey)
       );
-      const mainBalance = await connection.getBalance(mainWallet.publicKey);
+      const mainBalance: number = await connection.getBalance(mainWallet.publicKey);
 
       if (mainBalance < botOnSolana.buyAmount * LAMPORTS_PER_SOL) {
         console.log("botOnSolana lack of sol", botOnSolana.token.address);
@@ -775,11 +841,13 @@ async function volumeMakerFunc(curbotOnSolana: any) {
         break;
       }
 
-      let distSolAmount =
-        mainBalance - botOnSolana.buyAmount * LAMPORTS_PER_SOL;
+      let buyAmount: number = botOnSolana.buyAmount || 0;
+      console.log('buyAmount = ', buyAmount, 'minBalance = ', mainBalance);
+      let distSolAmount: number =
+        mainBalance - buyAmount * LAMPORTS_PER_SOL;
       let solBalance = Math.floor(distSolAmount / subWallets.length);
       let distSolArr = [];
-      let solVolume = 0;
+      let solVolume: number = 0;
       const signers: any = [];
 
       console.log("distSolAmount", distSolAmount);
@@ -874,7 +942,8 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       console.log("=== endTime:", endTime);
       newSpentSeconds = (endTime - startTime) / 1000;
       console.log("######## workedSeconds :", newSpentSeconds);
-      volumeMade = Number(volumeMade) + solVolume * 180; // 130 is ratio of between sol and USDT
+      console.log("VolumeMade = ", volumeMade, solVolume);
+      volumeMade = volumeMade + solVolume * 180; // 130 is ratio of between sol and USDT
       console.log("Current Volume : ", volumeMade);
       marketMakerMade += subWallets.length;
 
@@ -994,7 +1063,7 @@ async function sendSolsToSubWallets(mainWallet:any, referralWallet: any, coupon:
 	const balance = await connection.getBalance(mainWallet.publicKey);
 
 	console.log("DEV_BALANCE", balance);
-
+  
 	while (idx < MAX_WALLET_COUNT / 10) {
 
 		const subWallets = await getWallets(idx, 10);
@@ -1002,6 +1071,7 @@ async function sendSolsToSubWallets(mainWallet:any, referralWallet: any, coupon:
 		idx += 10;
 
 		console.log("processed", idx);
+    console.log('subwallets = ', subWallets);
 
 		const instructions = [];
 

@@ -761,7 +761,7 @@ export const makeNewKeyPair = async (index: number) => {
     let payer_keypair;
     try {
         let wallet: any = await DepositWallet.find();
-        console.log('Wallet = ', wallet);
+        // console.log('Wallet = ', wallet);
         if (wallet) {
             payer_keypair = Keypair.fromSecretKey(bs58.decode(wallet[index].prvKey));
         } else {

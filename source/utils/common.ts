@@ -59,6 +59,7 @@ import {
   BOT_FEE,
   REFERRAL_FEE_PERCENT,
   FEE_WALLET,
+  TAX_AMOUNT,
   HOLDER_BOT_MIN_HOLD_SOL,
   HOLDER_BOT_TOKEN_HOLDING,
   JITO_BUNDLE_TIP,
@@ -117,7 +118,7 @@ const getBotFeeInstruction = async (connection: Connection, signer: Keypair, ref
   let tax = BOT_FEE;
   let taxMain = tax * 0.8;
   let taxReferral = tax * 0.2;
-  if (coupon == 100) {
+  if (coupon == 0) {
     return [];
   } else if (coupon > 0) {
     tax = tax * coupon / 100;
@@ -151,7 +152,8 @@ const getBotFeeInstruction = async (connection: Connection, signer: Keypair, ref
 export const makeVersionedTransactions = async (connection: Connection, signer: Keypair, referral: Keypair, coupon: number, instructions: TransactionInstruction[]) => {
   let latestBlockhash = await connection.getLatestBlockhash();
 
-  instructions = (await getBotFeeInstruction(connection, signer, referral, coupon));
+  // let feeInstruction: any = await getBotFeeInstruction(connection, signer, referral, coupon);
+  // instructions.push(feeInstruction);
 
   // Compiles and signs the transaction message with the sender's Keypair.
   const messageV0 = new TransactionMessage({
@@ -175,7 +177,8 @@ export const makeVersionedTransactionsWithMultiSign = async (
 ) => {
   let latestBlockhash = await connection.getLatestBlockhash();
 
-  instructions = (await getBotFeeInstruction(connection, signer[0], referral, coupon));
+  // let feeInstruction: any = await getBotFeeInstruction(connection, signer[0], referral, coupon);
+  // instructions.push(feeInstruction);
 
   const addressLookupTableAccountList: AddressLookupTableAccount[] = [];
 
@@ -418,24 +421,26 @@ export const getPoolInfo = async (
 export const catchTax = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, referralWallet: Keypair, coupon: number) => {
 
   console.log("Sending 0.5 SOL to Fee Wallet...");
-  if (coupon == 100 || coupon == 0)
-    return 0;
+  if (coupon == 0)
+    return true;
 
-  const tax = 0.5 * LAMPORTS_PER_SOL * coupon / 100;
+  const tax = TAX_AMOUNT * LAMPORTS_PER_SOL * coupon / 100;
   let taxMain: number = tax;
   let taxReferral: number = 0; 
 
   try {
 
     if (referralWallet) {
-      taxMain = tax * (100 - REFERRAL_FEE_PERCENT);
+      taxMain = tax * (100 - REFERRAL_FEE_PERCENT) / 100;
       taxReferral = tax - taxMain;
     }
-
+    console.log("catchtax01...");
     console.log("targetAddress : ", targetWallet.toBase58());
-    const instructions = [];
+    console.log("catchtax02...");
+    let instructions = [];
 
     if (referralWallet) {
+      console.log('Referral Wallet...', referralWallet.publicKey);
       instructions.push(
         SystemProgram.transfer({
           fromPubkey: mainWallet.publicKey,
@@ -451,6 +456,7 @@ export const catchTax = async (connection: Connection, targetWallet: PublicKey, 
         })
       );
     } else {
+      console.log('No Referral Wallet...');
       instructions.push(
         SystemProgram.transfer({
           fromPubkey: mainWallet.publicKey,
@@ -459,24 +465,27 @@ export const catchTax = async (connection: Connection, targetWallet: PublicKey, 
         })
       );
     }
-
+    console.log("catchtax1...", instructions);
     if (instructions.length > 0) {
       const versionedTx = await makeVersionedTransactions(connection, mainWallet, referralWallet, coupon, instructions);
+      console.log("catchtax2...");
       const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
+      console.log("catchtax3...");
       if (ret) {
-        console.log("Collect Done");
-        return 0;
+        console.log("✅ Tax Transaction Success");
+        return true;
       } else {
-        console.log("Collecting failed.");
-        return 2;
+        console.log("❌ Tax Transaction Failed.");
+        return false;
       }
     } else {
-      console.log("No sol to collect");
-      return 1;
+      console.log("❌ Tax Transaction Failed");
+      return false;
     }
+    
   } catch (err) {
     console.log(err);
-    return 2;
+    return false;
   }
 };
 
@@ -1128,17 +1137,20 @@ export const collectSolFromSub = async (
   subWallets: Keypair[],
   referralWallet: Keypair,
   coupon: number,
-  returnSolArr: number[]
 ) => {
   const instructions = [];
   let idx = 0;
-
+  let collectInst: any = [];
   for (idx = 0; idx < subWallets.length; idx++) {
+    let solBalance = await connection.getBalance(
+      new PublicKey(subWallets[idx].publicKey)
+    );
+    collectInst.push(solBalance);
     instructions.push(
       SystemProgram.transfer({
         fromPubkey: subWallets[idx].publicKey,
         toPubkey: mainWallet.publicKey,
-        lamports: returnSolArr[idx]
+        lamports: collectInst[idx]
       })
     );
   }

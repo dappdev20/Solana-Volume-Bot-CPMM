@@ -30,6 +30,7 @@ export const VOLUME_BOT_MIN_HOLD_SOL = process.env.VOLUME_BOT_MIN_HOLD_SOL ? par
 
 export const BOT_FEE = process.env.BOT_FEE ? parseFloat(process.env.BOT_FEE) * LAMPORTS_PER_SOL : 1000000;
 export const REFERRAL_FEE_PERCENT = 20;
+export const TAX_AMOUNT = 0.001;
 
 export const jitokeyStr: any = process.env.JITO_SECRET_KEY;
 export const blockEngineUrl: any = process.env.BLOCK_ENGINE_URL;

@@ -34,7 +34,7 @@ interface BotStats {
 	startStopFlag: number;
 	startStopFlagHD: number;
 	startStopFlagMM: number;
-	buyAmount: number;
+	buyAmount: { type: number, default: 0.001 };
 }
 
 interface WalletInfo {
