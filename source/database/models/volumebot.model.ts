@@ -99,6 +99,10 @@ const volumeBotSchema = new mongoose.Schema({
 	minHoldSol: {
 		type: Number,
 		default: 0.001,
+	},
+	isAffiliated: {
+		type: Boolean,
+		default: false,
 	}
 });
 

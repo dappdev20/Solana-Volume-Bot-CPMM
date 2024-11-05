@@ -272,8 +272,8 @@ const splMenu = new Menu("SPL_menu")
             const parentUser: any = await pdatabase.selectParentUser({ chatid: userId });
             const coupon: number = parentUser.coupon;
             if (coupon == 0) {
-              parentUser.isAffiliated = true;
-              await parentUser.save();
+              botOnSolana.isAffiliated = true;
+              await botOnSolana.save();
               return true;
             }
             const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
@@ -296,8 +296,8 @@ const splMenu = new Menu("SPL_menu")
       
               if (ret == true) {
                 ctx.reply("✅ Tax Transaction Success");
-                parentUser.isAffiliated = true;
-                await parentUser.save();
+                botOnSolana.isAffiliated = true;
+              await botOnSolana.save();
               } else if (ret == false) {
                 ctx.reply("❌ Tax Transaction Failed");
                 return;
