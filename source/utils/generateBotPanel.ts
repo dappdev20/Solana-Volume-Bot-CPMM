@@ -117,6 +117,6 @@ The fastest and most efficient auto volume bot on Solana.
 		💳 Your Deposit Wallet: 
 			<code>${walletInfo.address}</code>
 		💰 Balance: ${(Number(walletInfo.balance) / 10 ** 9)?.toFixed(9)} SOL
-		Please deposit 0.2 SOL at least into this wallet.
+		Please deposit 0.7 SOL at least into this wallet.
 		`;
 }
