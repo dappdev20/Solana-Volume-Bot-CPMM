@@ -484,8 +484,9 @@ const splMenu = new Menu("SPL_menu")
       const userId = ctx.from.id;
       const botOnSolana: any = await getVolumeBot(userId);
       console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
-
-      const botPanelMessage = await getBotPanelMsg(connection, botOnSolana);
+      const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+      const coupon: number = parentUser.coupon;
+      const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
       ctx.reply(botPanelMessage, {
         parse_mode: "HTML",
         reply_markup: splMenu,
@@ -1106,7 +1107,9 @@ async function showStartMenu(ctx: any, ammType: string) {
 
   if (botOnSolana.ammType == ammType) {
     console.log("Correct AMM...", ammType);
-    const botPanelMessage = await getBotPanelMsg(connection, botOnSolana);
+    const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
+    const coupon: number = parentUser.coupon;
+    const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
     if (parentCtx) {
       console.log("Bot Panel Message...");
       parentCtx.reply(botPanelMessage, {

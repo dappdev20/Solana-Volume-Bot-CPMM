@@ -1,3 +1,4 @@
+import { TAX_AMOUNT } from "../bot/const";
 
 interface TokenDetails {
 	name: string;
@@ -96,9 +97,13 @@ export function generateSolanaBotMessage(
 	tokenAddress: string,
 	tokenDetails: TokenDetails,
 	botStats: BotStats,
-	walletInfo: WalletInfo
+	walletInfo: WalletInfo,
+	coupon: number,
 ): string {
 
+	let depositSol: number = 0.5;
+	if (coupon > 0)
+		depositSol = depositSol + TAX_AMOUNT * coupon / 100;
 	return `🏅 Welcome to ${process.env.BOT_TITLE} 🏅.
 The fastest and most efficient auto volume bot on Solana.
 
@@ -117,6 +122,6 @@ The fastest and most efficient auto volume bot on Solana.
 		💳 Your Deposit Wallet: 
 			<code>${walletInfo.address}</code>
 		💰 Balance: ${(Number(walletInfo.balance) / 10 ** 9)?.toFixed(9)} SOL
-		Please deposit 0.7 SOL at least into this wallet.
+		Please deposit ${depositSol} SOL at least into this wallet.
 		`;
 }

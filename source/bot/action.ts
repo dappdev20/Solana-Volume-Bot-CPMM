@@ -204,7 +204,7 @@ export const buyAction = async (
 
   const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
   const coupon: number = parentUser.coupon;
-  const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+  const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
   const referralWallet = Keypair.fromSecretKey(
     bs58.decode(referralUser.mainWallet.privateKey)
   );
@@ -283,7 +283,7 @@ export const sellAction = async (
 
   const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
   const coupon: number = parentUser.coupon;
-  const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+  const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
   const referralWallet = Keypair.fromSecretKey(
     bs58.decode(referralUser.mainWallet.privateKey)
   );
@@ -362,7 +362,7 @@ export const sellAllAction = async (
 
   const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
   const coupon: number = parentUser.coupon;
-  const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+  const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
   const referralWallet = Keypair.fromSecretKey(
     bs58.decode(referralUser.mainWallet.privateKey)
   );
@@ -665,15 +665,17 @@ export const startBotAction = async (
   botOnSolana = await VolumeBotModel.findOne({ userId: userId })
     .populate("mainWallet")
     .populate("token");
-
-  const botPanelMessage = await getBotPanelMsg(connection, botOnSolana);
+  const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
+  const coupon: number = parentUser.coupon;
+  const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
 
   return botPanelMessage;
 };
 
 export const getBotPanelMsg = async (
   connection: Connection,
-  botOnSolana: any
+  botOnSolana: any,
+  coupon: number
 ) => {
   let userMainWalletBalance = await connection.getBalance(
     new PublicKey(botOnSolana.mainWallet.publicKey)
@@ -710,7 +712,8 @@ export const getBotPanelMsg = async (
     {
       address: botOnSolana.mainWallet.publicKey,
       balance: userMainWalletBalance,
-    }
+    },
+    coupon
   );
 
   return botPanelMessage;
