@@ -217,6 +217,11 @@ const splMenu = new Menu("SPL_menu")
       bs58.decode(botOnSolana.mainWallet.privateKey)
     );
     const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
+    if (!parentUser) {
+      ctx.reply("You can't start here. Please start from @AriesVolumeBot");
+      return;
+    }
+    
     const coupon: number = parentUser.coupon;
     const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
     let referralWallet: any
@@ -270,6 +275,10 @@ const splMenu = new Menu("SPL_menu")
               bs58.decode(botOnSolana.mainWallet.privateKey)
             );
             const parentUser: any = await pdatabase.selectParentUser({ chatid: userId });
+            if (!parentUser) {
+              ctx.reply("You can't start here. Please start from @AriesVolumeBot");
+              return;
+            }
             const coupon: number = parentUser.coupon;
             if (coupon == 0) {
               botOnSolana.isAffiliated = true;
@@ -406,35 +415,39 @@ const splMenu = new Menu("SPL_menu")
       bs58.decode(botOnSolana.mainWallet.privateKey)
     );
     const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
-    const coupon: number = parentUser.coupon;
-    const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-    let referralWallet: any;
-    if (referralUser)
-      referralWallet = Keypair.fromSecretKey(
-        bs58.decode(referralUser.mainWallet.privateKey)
-      );
-    
-    let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
-    const subWallets: any = await getWallets(
-      marketMakerMade,
-      MAKER_BOT_MAX_PER_TX
-    );
-    console.log('Start collecting...');
-    const ret: any = await collectSolFromSub(
-      connection,
-      mainWallet,
-      subWallets,
-      referralWallet,
-      coupon
-    );
-
-    if (ret === 0) {
-      ctx.reply("✅ SOL collecting transaction is succeed.");
-    } else if (ret === 1) {
-      ctx.reply("🚫 There is not SOL for collecting.");
+    if (!parentUser) {
+      ctx.reply("You can't start here. Please start from @AriesVolumeBot");
     } else {
-      ctx.reply("🚫 SOL collecting transaction is failed.");
-    }
+      const coupon: number = parentUser.coupon;
+      const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+      let referralWallet: any;
+      if (referralUser)
+        referralWallet = Keypair.fromSecretKey(
+          bs58.decode(referralUser.mainWallet.privateKey)
+        );
+      
+      let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
+      const subWallets: any = await getWallets(
+        marketMakerMade,
+        MAKER_BOT_MAX_PER_TX
+      );
+      console.log('Start collecting...');
+      const ret: any = await collectSolFromSub(
+        connection,
+        mainWallet,
+        subWallets,
+        referralWallet,
+        coupon
+      );
+  
+      if (ret === 0) {
+        ctx.reply("✅ SOL collecting transaction is succeed.");
+      } else if (ret === 1) {
+        ctx.reply("🚫 There is not SOL for collecting.");
+      } else {
+        ctx.reply("🚫 SOL collecting transaction is failed.");
+      }
+    }   
   })
   // .row()
   // .text("Sell All Token", async (ctx: any) => {
@@ -485,13 +498,16 @@ const splMenu = new Menu("SPL_menu")
       const botOnSolana: any = await getVolumeBot(userId);
       console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
       const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-      const coupon: number = parentUser.coupon;
-      const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
-      ctx.reply(botPanelMessage, {
-        parse_mode: "HTML",
-        reply_markup: splMenu,
-      });
-      
+      if (!parentUser) {
+        ctx.reply("You can't start here. Please start from @AriesVolumeBot");
+      } else {
+        const coupon: number = parentUser.coupon;
+        const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
+        ctx.reply(botPanelMessage, {
+          parse_mode: "HTML",
+          reply_markup: splMenu,
+        });
+      }
     } catch (err) {
       console.error(err);
     }
@@ -533,13 +549,17 @@ bot.on("message", async (ctx: any) => {
       bs58.decode(botOnSolana.mainWallet.privateKey)
     );
     const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-    const coupon: number = parentUser.coupon;
-    const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
-    const referralWallet = Keypair.fromSecretKey(
-      bs58.decode(referralUser.mainWallet.privateKey)
-    );
-    sendSolsToSubWallets(mainWallet, referralWallet, coupon);
-    distributeSolNotifies.delete(userId);
+    if (!parentUser) {
+      ctx.reply("You can't start here. Please start from @AriesVolumeBot");
+    } else {
+      const coupon: number = parentUser.coupon;
+      const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
+      const referralWallet = Keypair.fromSecretKey(
+        bs58.decode(referralUser.mainWallet.privateKey)
+      );
+      sendSolsToSubWallets(mainWallet, referralWallet, coupon);
+      distributeSolNotifies.delete(userId);
+    }
     return;
   } else  if (volumeAmountNotifies.has(userId)) {
     const targetVolumeAmount = Number(inputText);
@@ -652,33 +672,37 @@ bot.on("message", async (ctx: any) => {
           bs58.decode(botOnSolana.mainWallet.privateKey)
         );
         const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-        const coupon: number = parentUser.coupon;
-        const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-        let referralWallet: any;
-        if (referralUser)
-          referralWallet = Keypair.fromSecretKey(
-            bs58.decode(referralUser.mainWallet.privateKey)
-          );
-        
-        let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
-        const subWallets: any = await getWallets(
-          marketMakerMade,
-          MAKER_BOT_MAX_PER_TX
-        );
-        const ret: any = await collectSolFromSub(
-          connection,
-          mainWallet,
-          subWallets,
-          referralWallet,
-          coupon
-        );
-
-        if (ret === 0) {
-          ctx.reply("✅ SOL collecting transaction is succeed.");
-        } else if (ret === 1) {
-          ctx.reply("🚫 There is not SOL for collecting.");
+        if (!parentUser) {
+          ctx.reply("You can't start here. Please start from @AriesVolumeBot");
         } else {
-          ctx.reply("🚫 SOL collecting transaction is failed.");
+          const coupon: number = parentUser.coupon;
+          const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+          let referralWallet: any;
+          if (referralUser)
+            referralWallet = Keypair.fromSecretKey(
+              bs58.decode(referralUser.mainWallet.privateKey)
+            );
+          
+          let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
+          const subWallets: any = await getWallets(
+            marketMakerMade,
+            MAKER_BOT_MAX_PER_TX
+          );
+          const ret: any = await collectSolFromSub(
+            connection,
+            mainWallet,
+            subWallets,
+            referralWallet,
+            coupon
+          );
+
+          if (ret === 0) {
+            ctx.reply("✅ SOL collecting transaction is succeed.");
+          } else if (ret === 1) {
+            ctx.reply("🚫 There is not SOL for collecting.");
+          } else {
+            ctx.reply("🚫 SOL collecting transaction is failed.");
+          }
         }
       } catch (err) {
         console.log(err);
@@ -753,6 +777,10 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       .populate("token");
 
     const parentUser: any = await pdatabase.selectParentUser({ userId: curbotOnSolana.userId });
+    if (!parentUser) {
+      console.log("You can't start here. Please start from @AriesVolumeBot");
+      return;
+    }
     const coupon: number = parentUser.coupon;
     const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
     const referralWallet = Keypair.fromSecretKey(
