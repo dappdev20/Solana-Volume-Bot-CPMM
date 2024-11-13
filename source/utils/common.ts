@@ -149,7 +149,7 @@ const getBotFeeInstruction = async (connection: Connection, signer: Keypair, ref
   return [feeInstruction1];
 }
 
-export const makeVersionedTransactions = async (connection: Connection, signer: Keypair, referral: Keypair, coupon: number, instructions: TransactionInstruction[]) => {
+export const makeVersionedTransactions = async (connection: Connection, signer: Keypair, instructions: TransactionInstruction[]) => {
   let latestBlockhash = await connection.getLatestBlockhash();
 
   // let feeInstruction: any = await getBotFeeInstruction(connection, signer, referral, coupon);
@@ -170,15 +170,10 @@ export const makeVersionedTransactions = async (connection: Connection, signer: 
 export const makeVersionedTransactionsWithMultiSign = async (
   connection: Connection,
   signer: Keypair[],
-  referral: Keypair,
-  coupon: number,
   instructions: TransactionInstruction[],
   addressLookupTable: string = ''
 ) => {
   let latestBlockhash = await connection.getLatestBlockhash();
-
-  // let feeInstruction: any = await getBotFeeInstruction(connection, signer[0], referral, coupon);
-  // instructions.push(feeInstruction);
 
   const addressLookupTableAccountList: AddressLookupTableAccount[] = [];
 
@@ -388,10 +383,12 @@ export const getPoolInfo = async (
     }
 
     const data = await raydium.api.fetchPoolByMints({
-      mint1: baseToken.mint,
-      mint2: quoteToken.mint,
-      type: PoolFetchType.Standard
+      mint1: quoteToken.mint,
+      mint2: baseToken.mint,
+      type: PoolFetchType.All
     }) as any;
+
+    console.log(data);
 
     const poolNum = data.data.length;
     let i = 0;
@@ -429,7 +426,6 @@ export const catchTax = async (connection: Connection, targetWallet: PublicKey, 
   let taxReferral: number = 0; 
 
   try {
-
     if (referralWallet) {
       taxMain = tax * (100 - REFERRAL_FEE_PERCENT) / 100;
       taxReferral = tax - taxMain;
@@ -465,12 +461,10 @@ export const catchTax = async (connection: Connection, targetWallet: PublicKey, 
         })
       );
     }
-    console.log("catchtax1...", instructions);
+    console.log("catchtax...");
     if (instructions.length > 0) {
-      const versionedTx = await makeVersionedTransactions(connection, mainWallet, referralWallet, coupon, instructions);
-      console.log("catchtax2...");
+      const versionedTx = await makeVersionedTransactions(connection, mainWallet, instructions);
       const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
-      console.log("catchtax3...");
       if (ret) {
         console.log("✅ Tax Transaction Success");
         return true;
@@ -489,7 +483,7 @@ export const catchTax = async (connection: Connection, targetWallet: PublicKey, 
   }
 };
 
-export const collectSol = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair, referralWallet: Keypair, coupon: number) => {
+export const collectSol = async (connection: Connection, targetWallet: PublicKey, mainWallet: Keypair) => {
 
   console.log("Collecting all SOL...");
   const txFee = VOLUME_BOT_MIN_HOLD_SOL * LAMPORTS_PER_SOL;
@@ -512,7 +506,7 @@ export const collectSol = async (connection: Connection, targetWallet: PublicKey
     }
 
     if (instructions.length > 0) {
-      const versionedTx = await makeVersionedTransactionsWithMultiSign(connection, [mainWallet, mainWallet], referralWallet, coupon, instructions);
+      const versionedTx = await makeVersionedTransactionsWithMultiSign(connection, [mainWallet, mainWallet], instructions);
       const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
       if (ret) {
         console.log("Collect Done");
@@ -534,8 +528,6 @@ export const collectSol = async (connection: Connection, targetWallet: PublicKey
 export const sellToken = async (
   connection: Connection,
   seller: Keypair,
-  referralWallet: Keypair,
-  coupon: number,
   tokenAmount: any,
   quoteToken: Token,
   baseToken: Token,
@@ -548,7 +540,7 @@ export const sellToken = async (
     return null;
   }
 
-  const versionTx = await makeVersionedTransactions(connection, seller, referralWallet, coupon, instructions);
+  const versionTx = await makeVersionedTransactions(connection, seller, instructions);
   versionTx.sign([seller]);
 
   return { transaction: versionTx, minOut: minOut };
@@ -557,8 +549,6 @@ export const sellToken = async (
 export const buyToken = async (
   connection: Connection,
   buyer: Keypair,
-  referralWallet: Keypair,
-  coupon: number,
   solAmount: number,
   quoteToken: Token,
   baseToken: Token,
@@ -573,11 +563,10 @@ export const buyToken = async (
     return { transaction: null, minOut: 0 };
   }
 
-  const versionTx = await makeVersionedTransactions(connection, buyer, referralWallet, coupon, instructions);
+  const versionTx = await makeVersionedTransactions(connection, buyer, instructions);
   versionTx.sign([buyer]);
 
-  const simRes = await connection.simulateTransaction(versionTx);
-
+  // const simRes = await connection.simulateTransaction(versionTx);
   // console.log("sim res", simRes);
 
   return { transaction: versionTx, minOut: minOut };
@@ -1004,8 +993,6 @@ export async function updateRecentBlockHash(connection: Connection, transactions
 export const createTokenAccountTx = async (
   connection: Connection,
   mainWallet: Keypair,
-  referralWallet: Keypair,
-  coupon: number,
   mint: PublicKey,
   poolInfo: any,
   raydium: Raydium | undefined,
@@ -1124,7 +1111,7 @@ export const createTokenAccountTx = async (
   instructions.push(lookupTableInst);
   instructions.push(extendInstruction);
 
-  const tx = await makeVersionedTransactions(connection, mainWallet, referralWallet, coupon, instructions);
+  const tx = await makeVersionedTransactions(connection, mainWallet, instructions);
 
   await createAndSendBundle(connection, mainWallet, [tx]);
 
@@ -1135,8 +1122,6 @@ export const collectSolFromSub = async (
   connection: Connection,
   mainWallet: Keypair,
   subWallets: Keypair[],
-  referralWallet: Keypair,
-  coupon: number,
 ) => {
   const instructions = [];
   let idx = 0;
@@ -1155,15 +1140,13 @@ export const collectSolFromSub = async (
     );
   }
 
-  return await makeVersionedTransactionsWithMultiSign(connection, subWallets, referralWallet, coupon, instructions);
+  return await makeVersionedTransactionsWithMultiSign(connection, subWallets, instructions);
 }
 
 export const makeBuySellTransaction = async (
   connection: Connection,
   payer: Keypair,
   buyer: Keypair,
-  referralWallet: Keypair,
-  coupon: number,
   solAmount: number,
   quoteToken: Token,
   baseToken: Token,
@@ -1205,7 +1188,7 @@ export const makeBuySellTransaction = async (
     return null;
   }
 
-  const tx = await makeVersionedTransactionsWithMultiSign(connection, [buyer, payer], referralWallet, coupon, versionedTransactions, addressLookupTable);
+  const tx = await makeVersionedTransactionsWithMultiSign(connection, [buyer, payer], versionedTransactions, addressLookupTable);
   return tx;
 };
 

@@ -216,16 +216,8 @@ const splMenu = new Menu("SPL_menu")
     const mainWallet = Keypair.fromSecretKey(
       bs58.decode(botOnSolana.mainWallet.privateKey)
     );
-    const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
-    const coupon: number = parentUser.coupon;
-    const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-    let referralWallet: any
-    if (referralUser)
-      referralWallet = Keypair.fromSecretKey(
-        bs58.decode(referralUser.mainWallet.privateKey)
-      );
-    sendSolsToSubWallets(mainWallet, referralWallet, coupon);
 
+    sendSolsToSubWallets(mainWallet);
   })
   .row()
   .text(
@@ -269,35 +261,39 @@ const splMenu = new Menu("SPL_menu")
             const mainWallet = Keypair.fromSecretKey(
               bs58.decode(botOnSolana.mainWallet.privateKey)
             );
-            const parentUser: any = await pdatabase.selectParentUser({ chatid: userId });
-            const coupon: number = parentUser.coupon;
+            const parentUser: any = await pdatabase.selectParentUser({
+              chatid: userId,
+            });
+            const coupon: number = parentUser ? parentUser.coupon : 100;
             if (coupon == 0) {
               botOnSolana.isAffiliated = true;
               await botOnSolana.save();
-              return true;
-            }
-            const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-            let referralWallet: any;
-            console.log('referral user = ', referralUser);
-            if (referralUser)
-              referralWallet = Keypair.fromSecretKey(
-                bs58.decode(referralUser.mainWallet.privateKey)
-              );
-            
-            if (!parentUser.isAffiliated) {
-              console.log('Start sending tax ...');
+            } else {
+              let referralWallet: any = null;
+              if (parentUser) {
+                const referralUser: any = await getVolumeBot(
+                  parentUser.referred
+                );
+                console.log("referral user = ", referralUser);
+
+                if (referralUser)
+                  referralWallet = Keypair.fromSecretKey(
+                    bs58.decode(referralUser.mainWallet.privateKey)
+                  );
+              }
+
+              console.log("Start sending tax ...");
               const ret = await catchTax(
                 connection,
                 new PublicKey(FEE_WALLET),
                 mainWallet,
                 referralWallet,
-                coupon,
+                coupon
               );
-      
+
               if (ret == true) {
                 ctx.reply("✅ Tax Transaction Success");
-                botOnSolana.isAffiliated = true;
-              await botOnSolana.save();
+                await botOnSolana.save();
               } else if (ret == false) {
                 ctx.reply("❌ Tax Transaction Failed");
                 return;
@@ -337,7 +333,7 @@ const splMenu = new Menu("SPL_menu")
           ctx.menu.update();
         } else {
           //set stop flag to the bot
-          console.log('Stopping ...');
+          console.log("Stopping ...");
           await VolumeBotModel.findByIdAndUpdate(botOnSolana?._id, {
             startStopFlag: 0,
             status: BOT_STATUS.STOPPED_BY_USER,
@@ -385,10 +381,13 @@ const splMenu = new Menu("SPL_menu")
     }
     resetNotifies(ctx.from.id);
     buyAmountNotifies.add(ctx.from.id);
-    
-    ctx.reply(`📨 Reply to this message with amount of Sol for each trade.\nExample: 2.5 for 2.5 SOL`, {
-      reply_markup: { force_reply: true },
-    });
+
+    ctx.reply(
+      `📨 Reply to this message with amount of Sol for each trade.\nExample: 2.5 for 2.5 SOL`,
+      {
+        reply_markup: { force_reply: true },
+      }
+    );
   })
   .row()
   .text("💵 Gather", async (ctx: any) => {
@@ -400,32 +399,24 @@ const splMenu = new Menu("SPL_menu")
     }
     resetNotifies(ctx.from.id);
     collectSolNotifies.add(ctx.from.id);
-    ctx.reply("⏱️ Please wait a minutes while gather the sol in your wallets...");
+    ctx.reply(
+      "⏱️ Please wait a minutes while gather the sol in your wallets..."
+    );
 
     const mainWallet = Keypair.fromSecretKey(
       bs58.decode(botOnSolana.mainWallet.privateKey)
     );
-    const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
-    const coupon: number = parentUser.coupon;
-    const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-    let referralWallet: any;
-    if (referralUser)
-      referralWallet = Keypair.fromSecretKey(
-        bs58.decode(referralUser.mainWallet.privateKey)
-      );
-    
+
     let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
     const subWallets: any = await getWallets(
       marketMakerMade,
       MAKER_BOT_MAX_PER_TX
     );
-    console.log('Start collecting...');
+    console.log("Start collecting...");
     const ret: any = await collectSolFromSub(
       connection,
       mainWallet,
-      subWallets,
-      referralWallet,
-      coupon
+      subWallets
     );
 
     if (ret === 0) {
@@ -450,27 +441,30 @@ const splMenu = new Menu("SPL_menu")
   .text("💵 Withdraw", async (ctx: any) => {
     resetNotifies(ctx.from.id);
     withdrawAmountNotifies.add(ctx.from.id);
-    
-    ctx.reply(`📨 Reply to this message with your phantom wallet address to withdraw.`, {
-      reply_markup: { force_reply: true },
-    });
+
+    ctx.reply(
+      `📨 Reply to this message with your phantom wallet address to withdraw.`,
+      {
+        reply_markup: { force_reply: true },
+      }
+    );
   })
   // .text("❓ Help", async (ctx: any) => {
   //   resetNotifies(ctx.from.id);
 
   //   const botPanelMessage = `
-	// 			      ❤️🎊🎈 Welcome! 🎈🎊❤️
+  // 			      ❤️🎊🎈 Welcome! 🎈🎊❤️
 
-	// 			This bot is perfect solana volume bot
-	// 			Please contact me. Telgram : @Capdev22
+  // 			This bot is perfect solana volume bot
+  // 			Please contact me. Telgram : @Capdev22
 
-	// 		🔸1. Once start this bot, input token address.
-	// 		🔸2. Set target value of volume, maker, holder
-	// 		🔸3. Deposit some sols to mainwallet
-	// 		🔸4. Start by clicking "Start" button
-	// 		🔸5. Stop by clicking "Stop" button. (If you click "Start", it change to "Stop").
-	// 		🔸6. Collect all remained SOL in all wallets to your wallet.
-	// 			`;
+  // 		🔸1. Once start this bot, input token address.
+  // 		🔸2. Set target value of volume, maker, holder
+  // 		🔸3. Deposit some sols to mainwallet
+  // 		🔸4. Start by clicking "Start" button
+  // 		🔸5. Stop by clicking "Stop" button. (If you click "Start", it change to "Stop").
+  // 		🔸6. Collect all remained SOL in all wallets to your wallet.
+  // 			`;
   //   ctx.reply(botPanelMessage, {
   //     parse_mode: "HTML",
   //     reply_markup: splMenu,
@@ -484,14 +478,19 @@ const splMenu = new Menu("SPL_menu")
       const userId = ctx.from.id;
       const botOnSolana: any = await getVolumeBot(userId);
       console.log("MainWallet Address : ", botOnSolana.mainWallet.publicKey);
-      const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-      const coupon: number = parentUser.coupon;
-      const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
+      const parentUser: any = await pdatabase.selectParentUser({
+        userId: userId,
+      });
+      const coupon: number = parentUser ? parentUser.coupon : 100;
+      const botPanelMessage = await getBotPanelMsg(
+        connection,
+        botOnSolana,
+        coupon
+      );
       ctx.reply(botPanelMessage, {
         parse_mode: "HTML",
         reply_markup: splMenu,
       });
-      
     } catch (err) {
       console.error(err);
     }
@@ -532,16 +531,11 @@ bot.on("message", async (ctx: any) => {
     const mainWallet = Keypair.fromSecretKey(
       bs58.decode(botOnSolana.mainWallet.privateKey)
     );
-    const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-    const coupon: number = parentUser.coupon;
-    const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
-    const referralWallet = Keypair.fromSecretKey(
-      bs58.decode(referralUser.mainWallet.privateKey)
-    );
-    sendSolsToSubWallets(mainWallet, referralWallet, coupon);
+
+    sendSolsToSubWallets(mainWallet);
     distributeSolNotifies.delete(userId);
     return;
-  } else  if (volumeAmountNotifies.has(userId)) {
+  } else if (volumeAmountNotifies.has(userId)) {
     const targetVolumeAmount = Number(inputText);
     if (targetVolumeAmount >= 100 && targetVolumeAmount <= 100000000) {
       await updateTargetVolume(userId, targetVolumeAmount);
@@ -610,38 +604,28 @@ bot.on("message", async (ctx: any) => {
     }
     mmAmountNotifies.delete(userId);
     return;
-  }
-  else if (buyAmountNotifies.has(userId)) {
+  } else if (buyAmountNotifies.has(userId)) {
     const botOnSolana: any = await getVolumeBot(userId);
-    console.log('Change buy amount = ', parseFloat(inputText));
+    console.log("Change buy amount = ", parseFloat(inputText));
     botOnSolana.minHoldSol = parseFloat(inputText);
     await botOnSolana.save();
     buyAmountNotifies.delete(userId);
-    ctx.reply(
-      `✅ Buy amount is updated to ${parseFloat(inputText)} `,
-      {
-        parse_mode: "HTML",
-      }
-    );
-  }
-  else if (withdrawAmountNotifies.has(userId)) {
+    ctx.reply(`✅ Buy amount is updated to ${parseFloat(inputText)} `, {
+      parse_mode: "HTML",
+    });
+  } else if (withdrawAmountNotifies.has(userId)) {
     const botOnSolana: any = await getVolumeBot(userId);
-    const token = botOnSolana.token.address;
     const result = await withdraw(connection, userId, new PublicKey(inputText));
-    let msg = '';
-    if (result == true)
-      msg = `✔️ Withdraw is completed successfully.`;
-    else
-      msg = `❌ Withdraw failed`;
+    let msg = "";
+    if (result == true) msg = `✔️ Withdraw is completed successfully.`;
+    else msg = `❌ Withdraw failed`;
 
-      ctx.reply(msg);
-
-  }
-  else if (collectSolNotifies.has(userId)) {
+    ctx.reply(msg);
+  } else if (collectSolNotifies.has(userId)) {
     const userId = ctx.from.id;
-    console.log('collecting...');
+    console.log("collecting...");
     if (pendingCollectSol.has(userId) !== true) {
-      console.log('collecting1...');
+      console.log("collecting1...");
       pendingCollectSol.add(userId);
 
       ctx.reply("ℹ Processing SOL collecting transaction...");
@@ -651,16 +635,9 @@ bot.on("message", async (ctx: any) => {
         const mainWallet = Keypair.fromSecretKey(
           bs58.decode(botOnSolana.mainWallet.privateKey)
         );
-        const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-        const coupon: number = parentUser.coupon;
-        const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-        let referralWallet: any;
-        if (referralUser)
-          referralWallet = Keypair.fromSecretKey(
-            bs58.decode(referralUser.mainWallet.privateKey)
-          );
-        
-        let marketMakerMade = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
+
+        let marketMakerMade =
+          (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
         const subWallets: any = await getWallets(
           marketMakerMade,
           MAKER_BOT_MAX_PER_TX
@@ -668,9 +645,7 @@ bot.on("message", async (ctx: any) => {
         const ret: any = await collectSolFromSub(
           connection,
           mainWallet,
-          subWallets,
-          referralWallet,
-          coupon
+          subWallets
         );
 
         if (ret === 0) {
@@ -752,13 +727,6 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       .populate("mainWallet")
       .populate("token");
 
-    const parentUser: any = await pdatabase.selectParentUser({ userId: curbotOnSolana.userId });
-    const coupon: number = parentUser.coupon;
-    const referralUser: any = await VolumeBotModel.findOne({ chatid: parentUser.referred }).populate("mainWallet");
-    const referralWallet = Keypair.fromSecretKey(
-      bs58.decode(referralUser.mainWallet.privateKey)
-    );
-
     if (botOnSolana.startStopFlag == 0) {
       break;
     }
@@ -775,7 +743,8 @@ async function volumeMakerFunc(curbotOnSolana: any) {
 
     let volumeMade: number = botOnSolana.volumeMade || 0;
     let volumePaid: number = botOnSolana.volumePaid || 0;
-    let marketMakerMade: number = (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
+    let marketMakerMade: number =
+      (botOnSolana.marketMakerMade || 0) % MAX_WALLET_COUNT;
     let volumeTarget: number = botOnSolana.targetVolume || 0;
 
     try {
@@ -805,7 +774,9 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       const mainWallet: Keypair = Keypair.fromSecretKey(
         bs58.decode(botOnSolana.mainWallet.privateKey)
       );
-      const mainBalance: number = await connection.getBalance(mainWallet.publicKey);
+      const mainBalance: number = await connection.getBalance(
+        mainWallet.publicKey
+      );
 
       if (mainBalance < botOnSolana.buyAmount * LAMPORTS_PER_SOL) {
         console.log("botOnSolana lack of sol", botOnSolana.token.address);
@@ -843,9 +814,8 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       }
 
       let buyAmount: number = botOnSolana.buyAmount || 0;
-      console.log('buyAmount = ', buyAmount, 'minBalance = ', mainBalance);
-      let distSolAmount: number =
-        mainBalance - buyAmount * LAMPORTS_PER_SOL;
+      console.log("buyAmount = ", buyAmount, "minBalance = ", mainBalance);
+      let distSolAmount: number = mainBalance - buyAmount * LAMPORTS_PER_SOL;
       let solBalance = Math.floor(distSolAmount / subWallets.length);
       let distSolArr = [];
       let solVolume: number = 0;
@@ -857,8 +827,6 @@ async function volumeMakerFunc(curbotOnSolana: any) {
         const lookupTableAddress = await createTokenAccountTx(
           connection,
           mainWallet,
-          referralWallet,
-          coupon,
           baseToken.mint,
           poolKeys,
           raydiumSDKList.get(mainWallet.publicKey.toString())
@@ -887,8 +855,6 @@ async function volumeMakerFunc(curbotOnSolana: any) {
             connection,
             subWallets[i],
             mainWallet,
-            referralWallet,
-            coupon,
             distSolArr[i],
             quoteToken,
             baseToken,
@@ -1027,7 +993,7 @@ export async function main() {
     await initSDKs();
 
     volumeMaker();
-  }, Number(volumeMakerInterval) * 100);
+  }, Number(volumeMakerInterval) * 1000);
 }
 
 export async function generateWallets() {
@@ -1057,49 +1023,50 @@ export async function generateWallets() {
   }
 }
 
-async function sendSolsToSubWallets(mainWallet:any, referralWallet: any, coupon: number) {
-
+async function sendSolsToSubWallets(mainWallet: any) {
   let idx = 0;
 
-	const balance = await connection.getBalance(mainWallet.publicKey);
+  const balance = await connection.getBalance(mainWallet.publicKey);
 
-	console.log("DEV_BALANCE", balance);
-  
-	while (idx < MAX_WALLET_COUNT / 10) {
+  console.log("DEV_BALANCE", balance);
 
-		const subWallets = await getWallets(idx, 10);
+  while (idx < MAX_WALLET_COUNT / 10) {
+    const subWallets = await getWallets(idx, 10);
 
-		idx += 10;
+    idx += 10;
 
-		console.log("processed", idx);
-    console.log('subwallets = ', subWallets);
+    console.log("processed", idx);
+    console.log("subwallets = ", subWallets);
 
-		const instructions = [];
+    const instructions = [];
 
-    let subWallet : any;
-		for (subWallet of subWallets) {
+    let subWallet: any;
+    for (subWallet of subWallets) {
+      const balance = await connection.getBalance(subWallet.publicKey);
 
-			const balance = await connection.getBalance(subWallet.publicKey);
+      if (balance < 0.001) {
+        instructions.push(
+          SystemProgram.transfer({
+            fromPubkey: mainWallet.publicKey,
+            toPubkey: subWallet.publicKey,
+            lamports: 0.001 * LAMPORTS_PER_SOL,
+          })
+        );
+      }
+    }
 
-			if (balance < 0.001) {
-				instructions.push(
-					SystemProgram.transfer({
-						fromPubkey: mainWallet.publicKey,
-						toPubkey: subWallet.publicKey,
-						lamports: 0.001 * LAMPORTS_PER_SOL
-					})
-				)
-			}
-		}
-
-		if (instructions.length > 0) {
-			const tx = await makeVersionedTransactions(connection, mainWallet, referralWallet, coupon, instructions);
-			tx.sign([mainWallet]);
-			// const res = await connection.simulateTransaction(tx);
-			// console.log("res", res);
-			await createAndSendBundle(connection, mainWallet, [tx]);
-		}
-	}
+    if (instructions.length > 0) {
+      const tx = await makeVersionedTransactions(
+        connection,
+        mainWallet,
+        instructions
+      );
+      tx.sign([mainWallet]);
+      // const res = await connection.simulateTransaction(tx);
+      // console.log("res", res);
+      await createAndSendBundle(connection, mainWallet, [tx]);
+    }
+  }
 }
 
 async function showStartMenu(ctx: any, ammType: string) {
@@ -1107,9 +1074,15 @@ async function showStartMenu(ctx: any, ammType: string) {
 
   if (botOnSolana.ammType == ammType) {
     console.log("Correct AMM...", ammType);
-    const parentUser: any = await pdatabase.selectParentUser({ userId: ctx.from.id });
-    const coupon: number = parentUser.coupon;
-    const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
+    const parentUser: any = await pdatabase.selectParentUser({
+      userId: ctx.from.id,
+    });
+    const coupon: number = parentUser ? parentUser.coupon : 100;
+    const botPanelMessage = await getBotPanelMsg(
+      connection,
+      botOnSolana,
+      coupon
+    );
     if (parentCtx) {
       console.log("Bot Panel Message...");
       parentCtx.reply(botPanelMessage, {

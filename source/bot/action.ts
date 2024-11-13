@@ -202,12 +202,6 @@ export const buyAction = async (
     .populate("mainWallet")
     .populate("token");
 
-  const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-  const coupon: number = parentUser.coupon;
-  const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-  const referralWallet = Keypair.fromSecretKey(
-    bs58.decode(referralUser.mainWallet.privateKey)
-  );
   const buySol = Number(inputText);
   console.log("buySol : ", buySol);
   const mainWallet = Keypair.fromSecretKey(
@@ -244,8 +238,6 @@ export const buyAction = async (
       const buyTx = await buyToken(
         connection,
         mainWallet,
-        referralWallet,
-        coupon,
         buySol,
         quoteToken,
         baseToken,
@@ -280,13 +272,6 @@ export const sellAction = async (
   })
     .populate("mainWallet")
     .populate("token");
-
-  const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-  const coupon: number = parentUser.coupon;
-  const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-  const referralWallet = Keypair.fromSecretKey(
-    bs58.decode(referralUser.mainWallet.privateKey)
-  );
 
   const token = botOnSolana.token.address;
   const mint = new PublicKey(token);
@@ -324,8 +309,6 @@ export const sellAction = async (
       const sellTx = await sellToken(
         connection,
         mainWallet,
-        referralWallet,
-        coupon,
         tokenAmount,
         quoteToken,
         baseToken,
@@ -360,13 +343,6 @@ export const sellAllAction = async (
     .populate("mainWallet")
     .populate("token");
 
-  const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-  const coupon: number = parentUser.coupon;
-  const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-  const referralWallet = Keypair.fromSecretKey(
-    bs58.decode(referralUser.mainWallet.privateKey)
-  );
-
   const token = botOnSolana.token.address;
   const mint = new PublicKey(token);
   const mintInfo = await getMint(connection, mint);
@@ -398,8 +374,6 @@ export const sellAllAction = async (
       const sellTx = await sellToken(
         connection,
         mainWallet,
-        referralWallet,
-        coupon,
         tokenAmount,
         quoteToken,
         baseToken,
@@ -452,9 +426,11 @@ export const withdraw = async (
     })
   );
 
+  return false;
+  
   let signatures = await sendAndConfirmTransaction(connection, transaction, [depositWallet.wallet], {
     skipPreflight: false,
-    commitment: 'finalized',
+    commitment: 'confirmed',
     maxRetries: 3
   });
   console.log("transfer sol signatures", signatures);
@@ -572,9 +548,6 @@ export const startBotAction = async (
     .populate("mainWallet")
     .populate("token");
 
-  let userMainWalletBalance;
-  let mainWalletAddress: PublicKey;
-
   let currentToken = await TokenModel.findOne({ address: tokenAddress });
 
   console.log("token a");
@@ -601,9 +574,6 @@ export const startBotAction = async (
   if (botOnSolana !== null) {
     let previousToken: any = botOnSolana.token;
     console.log("tokenName : ", previousToken);
-    mainWalletAddress = new PublicKey(botOnSolana.mainWallet.publicKey);
-    userMainWalletBalance = await connection.getBalance(mainWalletAddress);
-
     if (previousToken.address !== tokenAddress) {
       console.log("allowed is inited");
 
@@ -666,7 +636,7 @@ export const startBotAction = async (
     .populate("mainWallet")
     .populate("token");
   const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
-  const coupon: number = parentUser.coupon;
+  const coupon: number = parentUser ? parentUser.coupon : 100;
   const botPanelMessage = await getBotPanelMsg(connection, botOnSolana, coupon);
 
   return botPanelMessage;
