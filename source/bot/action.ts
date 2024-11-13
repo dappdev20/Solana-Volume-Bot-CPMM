@@ -37,7 +37,7 @@ import { Raydium } from "@raydium-io/raydium-sdk-v2";
 
 import {
   buyToken,
-  createAndSendBundle,
+  createAndSendBundleEx,
   getPoolInfo,
   getTokenMetadata,
   sellToken,
@@ -244,10 +244,13 @@ export const buyAction = async (
         poolInfo,
         raydium
       );
-      versionTx.push(buyTx?.transaction);
-      const ret = await createAndSendBundle(connection, mainWallet, versionTx);
+      if (buyTx.transaction)
+        versionTx.push(buyTx.transaction);
 
-      return ret;
+      if (versionTx.length > 0) {
+        const ret = await createAndSendBundleEx(connection, mainWallet, versionTx);
+        return ret;
+      }
     } catch (err) {
       console.log("Buy token transaction is failed.");
     }
@@ -315,9 +318,13 @@ export const sellAction = async (
         poolKeys,
         raydium
       );
-      versionTx.push(sellTx?.transaction);
-      const ret = await createAndSendBundle(connection, mainWallet, versionTx);
-      return ret;
+      if (sellTx)
+        versionTx.push(sellTx.transaction);
+      if (versionTx.length > 0) {
+        const ret = await createAndSendBundleEx(connection, mainWallet, versionTx);
+        return ret;  
+      }
+      
     } catch (err) {
       console.log(err);
     }
@@ -380,9 +387,14 @@ export const sellAllAction = async (
         poolKeys,
         raydium
       );
-      versionTx.push(sellTx?.transaction);
-      const ret = await createAndSendBundle(connection, mainWallet, versionTx);
-      return ret;
+
+      if (sellTx)
+        versionTx.push(sellTx.transaction);
+
+      if (versionTx.length > 0) {
+        const ret = await createAndSendBundleEx(connection, mainWallet, versionTx);
+        return ret;
+      }
     } catch (err) {
       console.log(err);
     }
@@ -651,7 +663,7 @@ export const getBotPanelMsg = async (
     new PublicKey(botOnSolana.mainWallet.publicKey)
   );
   const priceData = await getTokenData(botOnSolana.token.address);
-  console.log("Buy Amount = ", botOnSolana.minHoldSol);
+  console.log("Buy Amount = ", botOnSolana.buyAmount);
   const botPanelMessage = generateSolanaBotMessage(
     botOnSolana.token.address,
     {
@@ -677,7 +689,7 @@ export const getBotPanelMsg = async (
       startStopFlag: botOnSolana?.startStopFlag || 0,
       startStopFlagHD: botOnSolana?.startStopFlagHD || 0,
       startStopFlagMM: botOnSolana?.startStopFlagMM || 0,
-      buyAmount: botOnSolana?.minHoldSol || 0.001,
+      buyAmount: botOnSolana?.buyAmount || 0.001,
     },
     {
       address: botOnSolana.mainWallet.publicKey,

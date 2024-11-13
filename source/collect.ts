@@ -19,7 +19,7 @@ import {
     getAssociatedTokenAddress,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import { createAndSendBundle, updateRecentBlockHash } from "./utils/common";
+import { createAndSendBundleEx, updateRecentBlockHash } from "./utils/common";
 import { getWallets } from "./bot/action";
 import { SPL_ACCOUNT_LAYOUT } from "@raydium-io/raydium-sdk";
 
@@ -175,7 +175,7 @@ const main = async () => {
                 }
             }
 
-            res = await createAndSendBundle(connection, DEV_WALLET, versionedTx);
+            res = await createAndSendBundleEx(connection, DEV_WALLET, versionedTx);
         }
     }
 
@@ -253,7 +253,7 @@ const main = async () => {
             }
 
             let res = false;
-            res = await createAndSendBundle(connection, DEV_WALLET, versionedTx);
+            res = await createAndSendBundleEx(connection, DEV_WALLET, versionedTx);
         }
     }
 }

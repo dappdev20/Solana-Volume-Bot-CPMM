@@ -96,7 +96,7 @@ const volumeBotSchema = new mongoose.Schema({
 		type: String,
 		default: "",
 	},
-	minHoldSol: {
+	buyAmount: {
 		type: Number,
 		default: 0.001,
 	},

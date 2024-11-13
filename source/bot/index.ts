@@ -23,7 +23,6 @@ import { connectDatabase } from "../database/config";
 import {
   getPoolInfo,
   makeBuySellTransaction,
-  createAndSendBundle,
   validateAddress,
   collectSol,
   getTokenMetadata,
@@ -97,6 +96,7 @@ import {
 import { SystemProgram } from "@solana/web3.js";
 
 import DepositWallet from "../database/models/depositWallet.model";
+import { version } from "os";
 
 dotenv.config();
 
@@ -283,13 +283,14 @@ const splMenu = new Menu("SPL_menu")
               }
 
               console.log("Start sending tax ...");
-              const ret = await catchTax(
-                connection,
-                new PublicKey(FEE_WALLET),
-                mainWallet,
-                referralWallet,
-                coupon
-              );
+              // const ret = await catchTax(
+              //   connection,
+              //   new PublicKey(FEE_WALLET),
+              //   mainWallet,
+              //   referralWallet,
+              //   coupon
+              // );
+              const ret = true;
 
               if (ret == true) {
                 ctx.reply("✅ Tax Transaction Success");
@@ -607,7 +608,7 @@ bot.on("message", async (ctx: any) => {
   } else if (buyAmountNotifies.has(userId)) {
     const botOnSolana: any = await getVolumeBot(userId);
     console.log("Change buy amount = ", parseFloat(inputText));
-    botOnSolana.minHoldSol = parseFloat(inputText);
+    botOnSolana.buyAmount = parseFloat(inputText);
     await botOnSolana.save();
     buyAmountNotifies.delete(userId);
     ctx.reply(`✅ Buy amount is updated to ${parseFloat(inputText)} `, {
@@ -815,11 +816,11 @@ async function volumeMakerFunc(curbotOnSolana: any) {
 
       let buyAmount: number = botOnSolana.buyAmount || 0;
       console.log("buyAmount = ", buyAmount, "minBalance = ", mainBalance);
-      let distSolAmount: number = mainBalance - buyAmount * LAMPORTS_PER_SOL;
+      let distSolAmount: number = mainBalance - buyAmount * LAMPORTS_PER_SOL - 0.1 * LAMPORTS_PER_SOL;
       let solBalance = Math.floor(distSolAmount / subWallets.length);
       let distSolArr = [];
       let solVolume: number = 0;
-      const signers: any = [];
+      // const signers: any = [];
 
       console.log("distSolAmount", distSolAmount);
 
@@ -845,10 +846,11 @@ async function volumeMakerFunc(curbotOnSolana: any) {
             (VOLUME_BOT_MAX_PERCENTAGE - VOLUME_BOT_MIN_PERCENTAGE) +
           VOLUME_BOT_MIN_PERCENTAGE;
         distSolArr.push(Math.floor(solBalance * randfactor));
+        console.log('Sol Volume = ', Math.floor(solBalance * randfactor));
         solVolume +=
           (Math.floor(solBalance * randfactor) / LAMPORTS_PER_SOL) * 2;
       }
-
+      console.log('Make Buy/Sell Transactions...');
       for (let i = 0; i < subWallets.length; i++) {
         try {
           const volTx = await makeBuySellTransaction(
@@ -870,7 +872,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
           }
 
           versionedTx.push(volTx);
-          signers.push([mainWallet, subWallets[i]]);
+          // signers.push([mainWallet, subWallets[i]]);
         } catch (err) {
           console.log(err);
         }
@@ -879,9 +881,10 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       await updateRecentBlockHash(connection, versionedTx);
 
       console.log("versionedTx", versionedTx.length);
-
+      if (versionedTx.length == 0)
+        break;
       for (let i = 0; i < versionedTx.length; i++) {
-        versionedTx[i].sign(signers[i]);
+        // versionedTx[i].sign(signers[i]);
         const res = await connection.simulateTransaction(versionedTx[i]);
 
         if (res.value.err) console.log("err", res, res.value.err);
@@ -1036,15 +1039,14 @@ async function sendSolsToSubWallets(mainWallet: any) {
     idx += 10;
 
     console.log("processed", idx);
-    console.log("subwallets = ", subWallets);
+    // console.log("subwallets = ", subWallets);
 
     const instructions = [];
 
     let subWallet: any;
     for (subWallet of subWallets) {
       const balance = await connection.getBalance(subWallet.publicKey);
-
-      if (balance < 0.001) {
+      if (balance < 0.002 * LAMPORTS_PER_SOL) {
         instructions.push(
           SystemProgram.transfer({
             fromPubkey: mainWallet.publicKey,
@@ -1064,7 +1066,7 @@ async function sendSolsToSubWallets(mainWallet: any) {
       tx.sign([mainWallet]);
       // const res = await connection.simulateTransaction(tx);
       // console.log("res", res);
-      await createAndSendBundle(connection, mainWallet, [tx]);
+      await createAndSendBundleEx(connection, mainWallet, [tx]);
     }
   }
 }

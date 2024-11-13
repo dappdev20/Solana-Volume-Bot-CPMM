@@ -197,19 +197,21 @@ export const makeVersionedTransactionsWithMultiSign = async (
   return versionedTransaction;
 };
 
-export const getJitoTipAccount = async () => {
-  let jitoAuthKey: Keypair = Keypair.fromSecretKey(bs58.decode(jitokeyStr));
-
-  console.log("Bundle initialized");
-  const searcher = searcherClient(blockEngineUrl, jitoAuthKey);
-  const tipAccounts = await searcher.getTipAccounts();
-  const _tipAccount = tipAccounts[tipAccounts.length - 1];
-
-  console.log("Tip Account:", _tipAccount);
-  const tipAccount: PublicKey = new PublicKey(_tipAccount);
-
-  return tipAccount;
-}
+export const getJitoTipAccount = () => {
+	const tipAccounts = [
+		'96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5',
+		'HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe',
+		'Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY',
+		'ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49',
+		'DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh',
+		'ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt',
+		'DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL',
+		'3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT',
+	];
+	// Randomly select one of the tip addresses
+	const selectedTipAccount = tipAccounts[Math.floor(Math.random() * tipAccounts.length)];
+	return new PublicKey(selectedTipAccount);
+};
 
 export async function getTipVesionedTransaction(
   connection: Connection,
@@ -237,23 +239,9 @@ export async function getTipInstruction(
   tip: number
 ) {
   try {
-    const { data } = await axios.post(`https://${blockEngineUrl}/api/v1/bundles`,
-      {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTipAccounts",
-        params: [],
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    const tipAddrs = data.result;
     console.log("Adding tip transactions...", tip);
 
-    const tipAccount = new PublicKey(tipAddrs[0]);
+    const tipAccount = await getJitoTipAccount();
     const instruction =
       SystemProgram.transfer({
         fromPubkey: ownerPubkey,
@@ -308,58 +296,12 @@ export const createAndSendBundleEx = async (connection: Connection, payer: Keypa
     console.log("Bundle sent.");
     console.log("Bundle UUID:", bundleUUID);
 
-    return true;
-
-    const res = await checkBundle(bundleUUID);
-
-    return res;
-  } catch (error) {
-    console.error("Error creating and sending bundle.", error);
-
-  }
-  return false;
-};
-
-export const createAndSendBundle = async (connection: Connection, payer: Keypair, bundleTransactions: any) => {
-  try {
-
-    let jitoAuthKey: Keypair = Keypair.fromSecretKey(bs58.decode(jitokeyStr));
-
-    console.log("Bundle initialized");
-    const searcher = searcherClient(blockEngineUrl, jitoAuthKey);
-    const _tipAccount = (await searcher.getTipAccounts())[0];
-
-    console.log("Tip Account:", _tipAccount);
-    const tipAccount: PublicKey = new PublicKey(_tipAccount);
-
-    const recentBlockhash = (await connection.getLatestBlockhash('confirmed')).blockhash;
-
-    let bundle: Bundle | Error = new Bundle(bundleTransactions, 5);
-    bundle = bundle.addTipTx(
-      payer,
-      JITO_BUNDLE_TIP,
-      tipAccount,
-      recentBlockhash
-    );
-
-    console.log("Sending bundle...");
-    let bundleUUID;
-    if (bundle instanceof Bundle) {
-      bundleUUID = await searcher.sendBundle(bundle);
-    } else {
-      return false;
-    }
-
-    console.log("Bundle sent.");
-    console.log("Bundle UUID:", bundleUUID);
-
     const res = await checkBundle(bundleUUID);
 
     return res;
   } catch (error) {
     console.error("Error creating and sending bundle.", error);
   }
-
   return false;
 };
 
@@ -464,7 +406,7 @@ export const catchTax = async (connection: Connection, targetWallet: PublicKey, 
     console.log("catchtax...");
     if (instructions.length > 0) {
       const versionedTx = await makeVersionedTransactions(connection, mainWallet, instructions);
-      const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
+      const ret = await createAndSendBundleEx(connection, mainWallet, [versionedTx]);
       if (ret) {
         console.log("✅ Tax Transaction Success");
         return true;
@@ -507,7 +449,7 @@ export const collectSol = async (connection: Connection, targetWallet: PublicKey
 
     if (instructions.length > 0) {
       const versionedTx = await makeVersionedTransactionsWithMultiSign(connection, [mainWallet, mainWallet], instructions);
-      const ret = await createAndSendBundle(connection, mainWallet, [versionedTx]);
+      const ret = await createAndSendBundleEx(connection, mainWallet, [versionedTx]);
       if (ret) {
         console.log("Collect Done");
         return 0;
@@ -1113,7 +1055,7 @@ export const createTokenAccountTx = async (
 
   const tx = await makeVersionedTransactions(connection, mainWallet, instructions);
 
-  await createAndSendBundle(connection, mainWallet, [tx]);
+  await createAndSendBundleEx(connection, mainWallet, [tx]);
 
   return lookupTableAddress;
 }
@@ -1162,7 +1104,7 @@ export const makeBuySellTransaction = async (
   }
 
   // console.log("solAmount : ", solAmount);
-  console.log("maker : ", payer.publicKey.toString());
+  console.log("maker : ", payer.publicKey.toString(), 'solAmount = ', solAmount);
   let versionedTransactions = [];
 
   try {
