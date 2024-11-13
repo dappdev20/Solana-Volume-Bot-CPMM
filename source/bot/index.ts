@@ -262,7 +262,7 @@ const splMenu = new Menu("SPL_menu")
               bs58.decode(botOnSolana.mainWallet.privateKey)
             );
             const parentUser: any = await pdatabase.selectParentUser({
-              chatid: userId,
+              userId: userId,
             });
             const coupon: number = parentUser ? parentUser.coupon : 100;
             if (coupon == 0) {
