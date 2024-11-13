@@ -223,7 +223,11 @@ const splMenu = new Menu("SPL_menu")
     }
     
     const coupon: number = parentUser.coupon;
-    const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+    const referralUser: any = await VolumeBotModel.findOne({
+      userId: parentUser.referred,
+    })
+      .populate("mainWallet")
+      .populate("token");
     let referralWallet: any
     if (referralUser)
       referralWallet = Keypair.fromSecretKey(
@@ -274,7 +278,7 @@ const splMenu = new Menu("SPL_menu")
             const mainWallet = Keypair.fromSecretKey(
               bs58.decode(botOnSolana.mainWallet.privateKey)
             );
-            const parentUser: any = await pdatabase.selectParentUser({ chatid: userId });
+            const parentUser: any = await pdatabase.selectParentUser({ userId: userId });
             if (!parentUser) {
               ctx.reply("You can't start here. Please start from @AriesVolumeBot");
               return;
@@ -284,7 +288,11 @@ const splMenu = new Menu("SPL_menu")
               botOnSolana.isAffiliated = true;
               await botOnSolana.save();
             } else {
-              const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+              const referralUser: any = await VolumeBotModel.findOne({
+                userId: parentUser.referred,
+              })
+                .populate("mainWallet")
+                .populate("token");
               let referralWallet: any;
               console.log('referral user = ', referralUser);
               if (referralUser)
@@ -419,7 +427,11 @@ const splMenu = new Menu("SPL_menu")
       ctx.reply("You can't start here. Please start from @AriesVolumeBot");
     } else {
       const coupon: number = parentUser.coupon;
-      const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+      const referralUser: any = await VolumeBotModel.findOne({
+        userId: parentUser.referred,
+      })
+        .populate("mainWallet")
+        .populate("token");
       let referralWallet: any;
       if (referralUser)
         referralWallet = Keypair.fromSecretKey(
@@ -676,7 +688,11 @@ bot.on("message", async (ctx: any) => {
           ctx.reply("You can't start here. Please start from @AriesVolumeBot");
         } else {
           const coupon: number = parentUser.coupon;
-          const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+          const referralUser: any = await VolumeBotModel.findOne({
+            userId: parentUser.referred,
+          })
+            .populate("mainWallet")
+            .populate("token");
           let referralWallet: any;
           if (referralUser)
             referralWallet = Keypair.fromSecretKey(

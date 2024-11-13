@@ -10,7 +10,7 @@ const ParentDatabase = () => {
         ParentUser = db.model(
             "ParentUser",
             new mongoose.Schema({
-                chatid: String,
+                userId: String,
                 username: String,
                 depositWallet: String,
                 addr: String,
@@ -35,12 +35,12 @@ const ParentDatabase = () => {
 
     const updateUser = (params: any) => {
         return new Promise(async (resolve, reject) => {
-            ParentUser.findOne({ chatid: params.chatid }).then(async (user: any) => {
+            ParentUser.findOne({ chatid: params.userId }).then(async (user: any) => {
                 if (!user) {
                     user = new ParentUser();
                 }
     
-                user.chatid = params.chatid;
+                user.userId = params.userId;
                 user.username = params.username;
                 user.addr = params.addr;
                 user.depositWallet = params.depositWallet;
