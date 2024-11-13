@@ -274,35 +274,35 @@ const splMenu = new Menu("SPL_menu")
             if (coupon == 0) {
               botOnSolana.isAffiliated = true;
               await botOnSolana.save();
-              return true;
-            }
-            const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
-            let referralWallet: any;
-            console.log('referral user = ', referralUser);
-            if (referralUser)
-              referralWallet = Keypair.fromSecretKey(
-                bs58.decode(referralUser.mainWallet.privateKey)
-              );
-            
-            if (!parentUser.isAffiliated) {
-              console.log('Start sending tax ...');
-              const ret = await catchTax(
-                connection,
-                new PublicKey(FEE_WALLET),
-                mainWallet,
-                referralWallet,
-                coupon,
-              );
-      
-              if (ret == true) {
-                ctx.reply("✅ Tax Transaction Success");
-                botOnSolana.isAffiliated = true;
-              await botOnSolana.save();
-              } else if (ret == false) {
-                ctx.reply("❌ Tax Transaction Failed");
-                return;
+            } else {
+              const referralUser: any = await pdatabase.selectParentUser({ chatid: parentUser.referred });
+              let referralWallet: any;
+              console.log('referral user = ', referralUser);
+              if (referralUser)
+                referralWallet = Keypair.fromSecretKey(
+                  bs58.decode(referralUser.mainWallet.privateKey)
+                );
+              
+              if (!parentUser.isAffiliated) {
+                console.log('Start sending tax ...');
+                const ret = await catchTax(
+                  connection,
+                  new PublicKey(FEE_WALLET),
+                  mainWallet,
+                  referralWallet,
+                  coupon,
+                );
+        
+                if (ret == true) {
+                  ctx.reply("✅ Tax Transaction Success");
+                  botOnSolana.isAffiliated = true;
+                await botOnSolana.save();
+                } else if (ret == false) {
+                  ctx.reply("❌ Tax Transaction Failed");
+                  return;
+                }
               }
-            }
+            } 
           } catch (err) {
             console.log(err);
             ctx.reply("❌ Tax Transaction Failed");

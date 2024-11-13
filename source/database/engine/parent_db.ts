@@ -17,7 +17,7 @@ const ParentDatabase = () => {
                 referral: String,
                 referred: String,
                 timestamp: Number,
-                coupon: Number,
+                coupon: { type: Number, default: 100 },
                 affiliateWallet: String,
                 isAffiliated: { type: Boolean, default: false },
             })
