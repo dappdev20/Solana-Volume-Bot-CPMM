@@ -35,7 +35,7 @@ const ParentDatabase = () => {
 
     const updateUser = (params: any) => {
         return new Promise(async (resolve, reject) => {
-            ParentUser.findOne({ chatid: params.userId }).then(async (user: any) => {
+            ParentUser.findOne({ userId: params.userId }).then(async (user: any) => {
                 if (!user) {
                     user = new ParentUser();
                 }
