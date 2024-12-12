@@ -228,7 +228,8 @@ export const buyAction = async (
         quoteToken,
         baseToken,
         raydium,
-        userId
+        userId,
+        botOnSolana.ammType
       );
 
       if (poolInfo == null) {
@@ -307,7 +308,8 @@ export const sellAction = async (
         quoteToken,
         baseToken,
         raydium,
-        userId
+        userId,
+        botOnSolana.ammType
       );
       const sellTx = await sellToken(
         connection,
@@ -376,7 +378,8 @@ export const sellAllAction = async (
         quoteToken,
         baseToken,
         raydium,
-        userId
+        userId,
+        botOnSolana.ammType
       );
       const sellTx = await sellToken(
         connection,
@@ -549,7 +552,8 @@ export const getTransferSOLInst = (
 export const startBotAction = async (
   connection: Connection,
   userId: any,
-  tokenAddress: string
+  tokenAddress: string,
+  username: string,
 ) => {
   const { tNames, tSymbols, totalSupply, tDecimal } = await getTokenMetadata(
     connection,
@@ -606,6 +610,7 @@ export const startBotAction = async (
         workedSeconds: 0,
         allowed: 0,
         addressLookupTable: "",
+        username: username,
       });
     }
   } else {
@@ -617,6 +622,7 @@ export const startBotAction = async (
       publicKey: newWallet.publicKey.toBase58(),
       privateKey: bs58.encode(newWallet.secretKey),
       userId: userId,
+      username: username,
       level: "Main",
     });
 
@@ -627,6 +633,7 @@ export const startBotAction = async (
         publicKey: newWallet.publicKey.toBase58(),
         privateKey: bs58.encode(newWallet.secretKey),
         userId: userId,
+        username: username,
         level: "Sub",
       });
       walletSavingPromises.push(newSubWallet.save());
@@ -636,6 +643,7 @@ export const startBotAction = async (
 
     const newVolumeBot = new VolumeBotModel({
       userId: userId,
+      username: username,
       token: currentToken._id,
       mainWallet: newMainWallet._id,
       subWallets: [...newSubWalletIds],

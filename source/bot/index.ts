@@ -161,6 +161,27 @@ async function initSDKs() {
   }
 }
 
+const updatePoolType = async(botOnSolana: any, userId: any, poolType: string) => {
+  const token = botOnSolana.token.address;
+  const baseToken = new Token(
+    TOKEN_PROGRAM_ID,
+    token,
+    botOnSolana.token.decimals
+  );
+  const mainWallet: Keypair = Keypair.fromSecretKey(
+    bs58.decode(botOnSolana.mainWallet.privateKey)
+  );
+
+  await getPoolInfo(
+    connection,
+    quoteToken,
+    baseToken,
+    raydiumSDKList.get(mainWallet.publicKey.toString()),
+    userId,
+    poolType
+  );
+}
+
 const ammMenu = new Menu("AMM_menu")
   .text(
     async (ctx: any) => {
@@ -174,6 +195,7 @@ const ammMenu = new Menu("AMM_menu")
         ctx.reply("Invalid token address!.");
         return;
       } else {
+        await updatePoolType(botOnSolana, ctx.from.id, 'amm');
         showStartMenu(ctx, "amm");
       }
     }
@@ -187,6 +209,7 @@ const ammMenu = new Menu("AMM_menu")
       ctx.reply("Invalid token address!.");
       return;
     } else {
+      await updatePoolType(botOnSolana, ctx.from.id, 'clmm');
       showStartMenu(ctx, "clmm");
     }
   })
@@ -199,6 +222,7 @@ const ammMenu = new Menu("AMM_menu")
       ctx.reply("Invalid token address!.");
       return;
     } else {
+      await updatePoolType(botOnSolana, ctx.from.id, 'cpmm');
       showStartMenu(ctx, "cpmm");
     }
   })
@@ -523,10 +547,10 @@ bot.on("message", async (ctx: any) => {
   const inputText = ctx.update.message.text || "";
   const validatedResult = validateAddress(inputText);
   const userId = ctx.update.message.from.id;
-
+  const username = ctx.update.message.from.username;
   console.log("== INPUT : ", inputText);
   console.log("== userId : ", userId);
-
+  console.log('User name = ', ctx.update.message.from.username);
   if (distributeSolNotifies.has(userId)) {
     const botOnSolana: any = await getVolumeBot(userId);
     const mainWallet = Keypair.fromSecretKey(
@@ -675,7 +699,7 @@ bot.on("message", async (ctx: any) => {
           userId
         );
 
-        await startBotAction(connection, userId, tokenAddress);
+        await startBotAction(connection, userId, tokenAddress, username);
         const botOnSolana: any = await getVolumeBot(userId);
         const token = botOnSolana.token.address;
         const baseToken = new Token(
@@ -686,13 +710,7 @@ bot.on("message", async (ctx: any) => {
         const mainWallet: Keypair = Keypair.fromSecretKey(
           bs58.decode(botOnSolana.mainWallet.privateKey)
         );
-        const poolInfo = await getPoolInfo(
-          connection,
-          quoteToken,
-          baseToken,
-          raydiumSDKList.get(mainWallet.publicKey.toString()),
-          userId
-        );
+
         console.log("Show AMM Menu first...");
         parentCtx = ctx;
         ctx.reply("Select Pool Type", {
@@ -806,7 +824,8 @@ async function volumeMakerFunc(curbotOnSolana: any) {
         quoteToken,
         baseToken,
         raydiumSDKList.get(mainWallet.publicKey.toString()),
-        curbotOnSolana.userId
+        curbotOnSolana.userId,
+        botOnSolana.ammType
       );
 
       if (poolKeys == null) {
@@ -815,16 +834,19 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       }
 
       let buyAmount: number = botOnSolana.buyAmount || 0;
-      console.log("buyAmount = ", buyAmount, "minBalance = ", mainBalance);
-      let distSolAmount: number = mainBalance - buyAmount * LAMPORTS_PER_SOL - 0.1 * LAMPORTS_PER_SOL;
+      console.log("buyAmount = ", buyAmount, "minBalance = ", mainBalance, "subwallets = ", subWallets.length);
+      let distSolAmount: number = mainBalance - buyAmount * LAMPORTS_PER_SOL - 0.05 * LAMPORTS_PER_SOL;
+      // let distSolAmount: number = buyAmount * LAMPORTS_PER_SOL;
       let solBalance = Math.floor(distSolAmount / subWallets.length);
+      console.log("sol for one wallet = ", solBalance);
       let distSolArr = [];
       let solVolume: number = 0;
-      // const signers: any = [];
+      const signers: any = [];
 
       console.log("distSolAmount", distSolAmount);
 
       if (botOnSolana.addressLookupTable == "") {
+        console.log('Creating lookup table...');
         const lookupTableAddress = await createTokenAccountTx(
           connection,
           mainWallet,
@@ -843,10 +865,10 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       for (let i = 0; i < subWallets.length; i++) {
         const randfactor =
           Math.random() *
-            (VOLUME_BOT_MAX_PERCENTAGE - VOLUME_BOT_MIN_PERCENTAGE) +
+          (VOLUME_BOT_MAX_PERCENTAGE - VOLUME_BOT_MIN_PERCENTAGE) +
           VOLUME_BOT_MIN_PERCENTAGE;
         distSolArr.push(Math.floor(solBalance * randfactor));
-        console.log('Sol Volume = ', Math.floor(solBalance * randfactor));
+        console.log('Sol Volume = ', Math.floor(solBalance * randfactor), 'randfactor = ', randfactor);
         solVolume +=
           (Math.floor(solBalance * randfactor) / LAMPORTS_PER_SOL) * 2;
       }
@@ -872,7 +894,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
           }
 
           versionedTx.push(volTx);
-          // signers.push([mainWallet, subWallets[i]]);
+          signers.push([mainWallet, subWallets[i]]);
         } catch (err) {
           console.log(err);
         }
@@ -884,7 +906,7 @@ async function volumeMakerFunc(curbotOnSolana: any) {
       if (versionedTx.length == 0)
         break;
       for (let i = 0; i < versionedTx.length; i++) {
-        // versionedTx[i].sign(signers[i]);
+        versionedTx[i].sign(signers[i]);
         const res = await connection.simulateTransaction(versionedTx[i]);
 
         if (res.value.err) console.log("err", res, res.value.err);
@@ -1073,7 +1095,7 @@ async function sendSolsToSubWallets(mainWallet: any) {
 
 async function showStartMenu(ctx: any, ammType: string) {
   const botOnSolana: any = await getVolumeBot(ctx.from.id);
-
+  console.log('AMMtype = ', botOnSolana.ammType);
   if (botOnSolana.ammType == ammType) {
     console.log("Correct AMM...", ammType);
     const parentUser: any = await pdatabase.selectParentUser({

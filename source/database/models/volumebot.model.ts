@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const volumeBotSchema = new mongoose.Schema({
 	userId: Number,
+	username: String,
 	token: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: "Token",

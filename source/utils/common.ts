@@ -310,7 +310,8 @@ export const getPoolInfo = async (
   quoteToken: Token,
   baseToken: Token,
   raydium: Raydium | undefined,
-  userId: any
+  userId: any,
+  poolType: string,
 ) => {
   console.log("Getting pool info...");
 
@@ -334,17 +335,16 @@ export const getPoolInfo = async (
 
     const poolNum = data.data.length;
     let i = 0;
-    let poolType = '';
     for(i = 0; i < poolNum; i ++) {
       if (isValidCpmm(data.data[i].programId)) {
-        poolType = 'cpmm';
-        break;
+        if (poolType === 'cpmm')
+          break;
       } else if (isValidAmm(data.data[i].programId)) {
-        poolType = 'amm';
-        break;
+        if (poolType === 'amm')
+          break;
       } else if (isValidClmm(data.data[i].programId)) {
-        poolType = 'clmm';
-        break;
+        if (poolType === 'clmm')
+          break;
       }
     }
     console.log("Pool Type = ", poolType, "Pool Num = ", data.data.length);
@@ -548,7 +548,7 @@ export const sellTokenInstruction = async (
 
 
   if (poolType == 'cpmm') {
-
+    console.log('Sell Token Type : CPMM');
     const rpcData = await raydium.cpmm.getRpcPoolInfo(poolInfo.id, true)
 
     const inputMint = baseToken.mint.toString();
@@ -581,7 +581,7 @@ export const sellTokenInstruction = async (
     return { instructions: transaction.instructions, minOut: swapResult.destinationAmountSwapped.toNumber() };
 
   } else if (poolType == 'amm') {
-
+    console.log('Sell Token Type : AMM');
     const poolKeys = await raydium.liquidity.getAmmPoolKeys(poolInfo.id)
     const rpcData = await raydium.liquidity.getRpcPoolInfo(poolInfo.id)
 
@@ -1118,7 +1118,8 @@ export const makeBuySellTransaction = async (
 
     //sell
     let tokenAmountToSell = clean ? minOut + tokenBalance * 10 ** baseDecimal : minOut;
-    console.log("minAmountOut : ", Number(tokenAmountToSell));
+    // let tokenAmountToSell = minOut * 0.998;
+    console.log("minAmountOut : ", Number(tokenAmountToSell), minOut, solAmount);
 
     const { instructions: sellInstrunctions } = await sellTokenInstruction(connection, buyer, tokenAmountToSell, quoteToken, baseToken, poolInfo, raydium);
     // console.log("instructions", res.instructions);
