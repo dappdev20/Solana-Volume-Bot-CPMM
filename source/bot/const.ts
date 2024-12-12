@@ -32,7 +32,6 @@ export const BOT_FEE = process.env.BOT_FEE ? parseFloat(process.env.BOT_FEE) * L
 export const REFERRAL_FEE_PERCENT = 20;
 export const TAX_AMOUNT = 1.5;
 
-export const jitokeyStr: any = process.env.JITO_SECRET_KEY;
 export const blockEngineUrl: any = process.env.BLOCK_ENGINE_URL;
 export const JITO_BUNDLE_TIP: number = process.env.JITO_BUNDLE_TIP ? parseFloat(process.env.JITO_BUNDLE_TIP) * LAMPORTS_PER_SOL : 10000;
 export const token = process.env.BOT_TOKEN;

@@ -5,47 +5,28 @@ import BN from "bn.js";
 import { BigNumber } from "bignumber.js";
 import {
   Keypair,
-  Signer,
   PublicKey,
   SystemProgram,
-  Transaction,
   Connection,
   TransactionMessage,
   TransactionInstruction,
   VersionedTransaction,
-  ComputeBudgetProgram,
   LAMPORTS_PER_SOL,
   AddressLookupTableProgram,
 } from "@solana/web3.js";
 import {
-  MINT_SIZE,
-  TOKEN_PROGRAM_ID,
-  AuthorityType,
-  Account,
   getMint,
   getAccount,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
-  createTransferInstruction,
 } from "@solana/spl-token";
 
 import {
   Token,
-  TokenAmount,
   TxVersion,
-  LOOKUP_TABLE_CACHE,
-  MAINNET_PROGRAM_ID,
-  SPL_ACCOUNT_LAYOUT,
-  Liquidity,
-  Percent,
-  buildSimpleTransaction
 } from "@raydium-io/raydium-sdk";
 
-import { Market, MARKET_STATE_LAYOUT_V3 } from "@project-serum/serum";
-
 import bs58 from "bs58";
-import { searcherClient } from "jito-ts/dist/sdk/block-engine/searcher";
-import { Bundle } from "jito-ts/dist/sdk/block-engine/types";
 import { ApiV3PoolInfoItem, PoolFetchType, CurveCalculator, Raydium, PoolUtils } from "@raydium-io/raydium-sdk-v2";
 import { isValidAmm, isValidClmm, isValidCpmm } from "./sdkv2";
 
@@ -60,15 +41,8 @@ import {
   REFERRAL_FEE_PERCENT,
   FEE_WALLET,
   TAX_AMOUNT,
-  HOLDER_BOT_MIN_HOLD_SOL,
-  HOLDER_BOT_TOKEN_HOLDING,
   JITO_BUNDLE_TIP,
-  JITO_TIMEOUT,
-  jitokeyStr,
-  MAKER_BOT_MIN_HOLD_SOL,
-  VOLUME_BOT_MAX_PERCENTAGE,
   VOLUME_BOT_MIN_HOLD_SOL,
-  VOLUME_BOT_MIN_PERCENTAGE
 } from "../bot/const";
 
 import {
@@ -704,10 +678,6 @@ export const buyTokenInstruction = async (
 
   const inputAmount = new BN(Math.floor(solAmount));
 
-  // console.log("buyer", buyer.publicKey.toString());
-  // console.log("baseToken", baseToken.mint.toString());
-  // console.log("solAmount", inputAmount.toString());
-
   if (poolType == 'cpmm') {
 
     const rpcData = await raydium.cpmm.getRpcPoolInfo(poolInfo.id, true);
@@ -723,9 +693,6 @@ export const buyTokenInstruction = async (
       rpcData.configInfo ? rpcData.configInfo.tradeFeeRate : new BN(0),
     )
 
-    // console.log("swapResult", swapResult);
-
-    // console.log(await connection.simulateTransaction(tipTransaction))
     const { transaction } = await raydium.cpmm.swap<TxVersion.LEGACY>({
       payer: buyer.publicKey,
       poolInfo: poolInfo as any,
@@ -733,10 +700,6 @@ export const buyTokenInstruction = async (
       slippage: 0.005, // range: 1 ~ 0.0001, means 100% ~ 0.01%
       baseIn,
       txVersion: TxVersion.LEGACY,
-      // optional: set up priority fee here
-      // computeBudgetConfig: {
-      //   microLamports: 100000,
-      // },
     })
 
     return { instructions: transaction.instructions, minOut: swapResult.destinationAmountSwapped.toNumber() };
@@ -777,14 +740,7 @@ export const buyTokenInstruction = async (
       fixedSide: 'in',
       inputMint: mintIn.address,
       associatedOnly: false,
-      // config: {
-      //   associatedOnly: false,
-      // },
       txVersion: TxVersion.LEGACY,
-      // computeBudgetConfig: {
-      //   // units: 1000000,
-      //   microLamports: 100,
-      // }
     })
 
     return { instructions: transaction.instructions, minOut: out.minAmountOut.toNumber() };
@@ -814,7 +770,6 @@ export const buyTokenInstruction = async (
 
     const { transaction } = await raydium.clmm.swap({
       poolInfo: poolInfo as any,
-      // poolKeys: ,
       inputMint: poolInfo[baseIn ? 'mintA' : 'mintB'].address,
       amountIn: inputAmount,
       amountOutMin: minAmountOut.amount.raw,
@@ -1103,13 +1058,10 @@ export const makeBuySellTransaction = async (
     return null;
   }
 
-  // console.log("solAmount : ", solAmount);
   console.log("maker : ", payer.publicKey.toString(), 'solAmount = ', solAmount);
   let versionedTransactions = [];
 
   try {
-    // console.log("raydium.owner", raydium.owner?.publicKey.toString());
-
     // buy
     const { instructions, minOut } = await buyTokenInstruction(connection, buyer, solAmount, quoteToken, baseToken, poolInfo, raydium);
     versionedTransactions.push(...instructions);
@@ -1122,8 +1074,6 @@ export const makeBuySellTransaction = async (
     console.log("minAmountOut : ", Number(tokenAmountToSell), minOut, solAmount);
 
     const { instructions: sellInstrunctions } = await sellTokenInstruction(connection, buyer, tokenAmountToSell, quoteToken, baseToken, poolInfo, raydium);
-    // console.log("instructions", res.instructions);
-
     versionedTransactions.push(...sellInstrunctions);
 
   } catch (error) {
@@ -1188,7 +1138,6 @@ export const getTokenBalance = async (
 }
 
 const checkBundle = async (uuid: any) => {
-
   let count = 0;
   while (1) {
     try {

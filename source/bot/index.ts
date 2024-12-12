@@ -639,7 +639,6 @@ bot.on("message", async (ctx: any) => {
       parse_mode: "HTML",
     });
   } else if (withdrawAmountNotifies.has(userId)) {
-    const botOnSolana: any = await getVolumeBot(userId);
     const result = await withdraw(connection, userId, new PublicKey(inputText));
     let msg = "";
     if (result == true) msg = `✔️ Withdraw is completed successfully.`;
@@ -1073,7 +1072,7 @@ async function sendSolsToSubWallets(mainWallet: any) {
           SystemProgram.transfer({
             fromPubkey: mainWallet.publicKey,
             toPubkey: subWallet.publicKey,
-            lamports: 0.001 * LAMPORTS_PER_SOL,
+            lamports: 0.002 * LAMPORTS_PER_SOL,
           })
         );
       }
