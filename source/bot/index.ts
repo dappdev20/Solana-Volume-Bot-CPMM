@@ -643,7 +643,7 @@ bot.on("message", async (ctx: any) => {
     let msg = "";
     if (result == true) msg = `✔️ Withdraw is completed successfully.`;
     else msg = `❌ Withdraw failed`;
-
+    withdrawAmountNotifies.delete(userId);
     ctx.reply(msg);
   } else if (collectSolNotifies.has(userId)) {
     const userId = ctx.from.id;

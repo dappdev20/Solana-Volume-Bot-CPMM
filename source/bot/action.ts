@@ -441,8 +441,6 @@ export const withdraw = async (
     })
   );
 
-  return false;
-  
   let signatures = await sendAndConfirmTransaction(connection, transaction, [depositWallet.wallet], {
     skipPreflight: false,
     commitment: 'confirmed',

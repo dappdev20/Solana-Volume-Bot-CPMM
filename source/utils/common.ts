@@ -1069,8 +1069,8 @@ export const makeBuySellTransaction = async (
     const tokenBalance = await getTokenBalance(connection, baseToken.mint.toString(), buyer.publicKey, baseDecimal);
 
     //sell
-    let tokenAmountToSell = clean ? minOut + tokenBalance * 10 ** baseDecimal : minOut;
-    // let tokenAmountToSell = minOut * 0.998;
+    // let tokenAmountToSell = clean ? minOut + tokenBalance * 10 ** baseDecimal : minOut;
+    let tokenAmountToSell = clean ? minOut + tokenBalance * 10 ** baseDecimal : minOut * 0.993;
     console.log("minAmountOut : ", Number(tokenAmountToSell), minOut, solAmount);
 
     const { instructions: sellInstrunctions } = await sellTokenInstruction(connection, buyer, tokenAmountToSell, quoteToken, baseToken, poolInfo, raydium);
